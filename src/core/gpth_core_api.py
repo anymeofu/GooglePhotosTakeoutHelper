@@ -24,6 +24,21 @@ except ImportError:
 from dateutil import parser as date_parser
 from tqdm import tqdm
 
+class AlbumMode(Enum):
+    """Album handling modes"""
+    SHORTCUT = "shortcut"
+    DUPLICATE_COPY = "duplicate-copy"
+    REVERSE_SHORTCUT = "reverse-shortcut"
+    JSON = "json"
+    NOTHING = "nothing"
+
+class ExtensionFixMode(Enum):
+    """Extension fixing modes"""
+    NONE = "none"
+    STANDARD = "standard"
+    CONSERVATIVE = "conservative"
+    SOLO = "solo"
+
 class ProcessingStep(Enum):
     FIX_EXTENSIONS = 1
     DISCOVER_MEDIA = 2
@@ -39,14 +54,20 @@ class ProcessingConfig:
     """Configuration for processing operations"""
     input_path: str
     output_path: str
+    album_mode: AlbumMode = AlbumMode.SHORTCUT
+    date_division: int = 0  # 0=single folder, 1=year, 2=year/month, 3=year/month/day
+    divide_partner_shared: bool = False
     skip_extras: bool = True
-    skip_albums: bool = False
-    keep_duplicates: bool = False
-    fix_creation_time: bool = True
-    use_exiftool: bool = True
-    max_threads: int = 4
+    write_exif: bool = True
+    transform_pixel_mp: bool = False
+    guess_from_name: bool = True
+    update_creation_time: bool = False
+    limit_filesize: bool = False
+    extension_fix_mode: ExtensionFixMode = ExtensionFixMode.STANDARD
     verbose: bool = False
-    dry_run: bool = False  # Simulate processing without making changes
+    fix_mode: bool = False
+    dry_run: bool = False
+    max_threads: int = 4
 
 @dataclass
 class ProcessingResult:
@@ -60,7 +81,7 @@ class ProcessingResult:
     warnings: List[str] = field(default_factory=list)
     processing_time: float = 0.0
 
-class GpthCoreApi:
+class GooglePhotosTakeoutHelper:
     """
     Main API class for Google Photos Takeout Helper functionality
     Provides clean interface for both CLI and GUI implementations
@@ -69,7 +90,7 @@ class GpthCoreApi:
     def __init__(self, config: ProcessingConfig):
         self.config = config
         self.logger = self._setup_logging()
-        self._progress_callback: Optional[Callable[[int, str], None]] = None
+        self._progress_callback: Optional[Callable[[int, str, float], None]] = None
         self._cancel_requested = False
         
     def _setup_logging(self) -> logging.Logger:
@@ -87,7 +108,7 @@ class GpthCoreApi:
             
         return logger
     
-    def set_progress_callback(self, callback: Callable[[int, str], None]) -> None:
+    def set_progress_callback(self, callback: Callable[[int, str, float], None]) -> None:
         """Set progress callback for GUI updates"""
         self._progress_callback = callback
     
@@ -95,10 +116,10 @@ class GpthCoreApi:
         """Request cancellation of current processing"""
         self._cancel_requested = True
     
-    def _update_progress(self, step: int, message: str) -> None:
+    def _update_progress(self, step: int, message: str, progress: float = 0.0) -> None:
         """Update progress if callback is set"""
         if self._progress_callback:
-            self._progress_callback(step, message)
+            self._progress_callback(step, message, progress)
     
     def validate_paths(self) -> Tuple[bool, List[str]]:
         """Validate input and output paths"""
@@ -166,89 +187,37 @@ class GpthCoreApi:
         return structure
     
     def process_takeout(self) -> ProcessingResult:
-        """Main processing function - orchestrates all steps"""
-        start_time = datetime.now()
-        result = ProcessingResult(success=False)
-        
+        """Main processing function - orchestrates all steps using the new pipeline"""
         try:
             # Validate paths first
             valid, errors = self.validate_paths()
             if not valid:
+                result = ProcessingResult(success=False)
                 result.errors.extend(errors)
                 return result
             
-            # Step 1: Fix Extensions
-            self._update_progress(1, "Fixing file extensions...")
-            if self._cancel_requested:
-                return result
-            self._fix_extensions()
+            # Create new pipeline and execute
+            from .processing_pipeline import ProcessingPipeline
+            pipeline = ProcessingPipeline(self.logger, self.config)
             
-            # Step 2: Discover Media
-            self._update_progress(2, "Discovering media files...")
-            if self._cancel_requested:
-                return result
-            media_files = self._discover_media_files()
-            result.total_files = len(media_files)
+            # Set up progress callback if available
+            if self._progress_callback:
+                pipeline.set_progress_callback(self._progress_callback)
             
-            # Step 3: Remove Duplicates
-            self._update_progress(3, "Removing duplicates...")
-            if self._cancel_requested:
-                return result
-            if not self.config.keep_duplicates:
-                unique_files, duplicates = self._remove_duplicates(media_files)
-                result.duplicates_removed = len(duplicates)
-                media_files = unique_files
+            # Execute pipeline
+            pipeline_result = pipeline.execute(
+                Path(self.config.input_path),
+                Path(self.config.output_path)
+            )
             
-            # Step 4: Extract Dates
-            self._update_progress(4, "Extracting dates...")
-            if self._cancel_requested:
-                return result
-            file_dates = self._extract_dates(media_files)
-            
-            # Step 5: Write EXIF
-            self._update_progress(5, "Writing EXIF data...")
-            if self._cancel_requested:
-                return result
-            self._write_exif_data(media_files, file_dates)
-            
-            # Step 6: Find Albums
-            self._update_progress(6, "Finding albums...")
-            if self._cancel_requested:
-                return result
-            if not self.config.skip_albums:
-                albums = self._find_albums()
-                result.albums_found = len(albums)
-            
-            # Step 7: Move Files
-            self._update_progress(7, "Moving files...")
-            if self._cancel_requested:
-                return result
-            self._move_files(media_files, file_dates)
-            result.processed_files = len(media_files)
-            
-            # Step 8: Update Creation Time
-            self._update_progress(8, "Updating file timestamps...")
-            if self._cancel_requested:
-                return result
-            if self.config.fix_creation_time:
-                self._update_creation_times(media_files, file_dates)
-            
-            result.success = True
-            self.logger.info("Processing completed successfully!")
+            # Convert pipeline result to legacy format
+            return pipeline.convert_to_processing_result(pipeline_result)
             
         except Exception as e:
-            result.errors.append(f"Processing failed: {str(e)}")
             self.logger.error(f"Processing failed: {str(e)}", exc_info=True)
-        
-        finally:
-            end_time = datetime.now()
-            result.processing_time = (end_time - start_time).total_seconds()
-            
-            # Add dry run information to result
-            if self.config.dry_run:
-                result.warnings.append("DRY RUN MODE: No files were actually moved or modified")
-        
-        return result
+            result = ProcessingResult(success=False)
+            result.errors.append(f"Processing failed: {str(e)}")
+            return result
     
     def _fix_extensions(self) -> None:
         """Fix incorrect file extensions based on content"""
@@ -468,42 +437,40 @@ class GpthCoreApi:
         return albums
     
     def _move_files(self, media_files: List[Path], file_dates: Dict[Path, Optional[datetime]]) -> None:
-        """Move files to organized directory structure"""
+        """Move files to organized directory structure using album mode strategies"""
         self.logger.info("Moving files...")
-        output_path = Path(self.config.output_path)
+        # Find album information first
+        albums_info = self._find_albums()
+        # Store album info for JSON mode
+        self._albums_for_json = {}
         
+        # Process each file according to album mode
         for file_path in tqdm(media_files, desc="Moving files", disable=not self.config.verbose):
             try:
-                # Use extracted date or fallback to current date
                 date_taken = file_dates.get(file_path) or datetime.now()
+                # Determine if this file is partner shared
+                is_partner_shared = self._is_partner_shared_file(file_path)
+                # Find which albums this file belongs to
+                file_albums = self._get_file_albums(file_path, albums_info)
                 
-                # Create date-based directory structure
-                year = date_taken.year
-                month = date_taken.month
-                
-                dest_dir = output_path / str(year) / f"{month:02d}"
-                dest_dir.mkdir(parents=True, exist_ok=True)
-                
-                dest_file = dest_dir / file_path.name
-                
-                # Handle name conflicts
-                counter = 1
-                original_dest = dest_file
-                while dest_file.exists():
-                    stem = original_dest.stem
-                    suffix = original_dest.suffix
-                    dest_file = original_dest.parent / f"{stem}_{counter}{suffix}"
-                    counter += 1
-                
-                # Copy file (or simulate in dry run)
-                if self.config.dry_run:
-                    self.logger.info(f"DRY RUN: Would move {file_path} to {dest_file}")
-                else:
-                    shutil.copy2(file_path, dest_file)
-                    self.logger.debug(f"Moved {file_path} to {dest_file}")
-                
+                # Process according to album mode
+                if self.config.album_mode == AlbumMode.SHORTCUT:
+                    self._process_shortcut_mode(file_path, date_taken, file_albums, is_partner_shared)
+                elif self.config.album_mode == AlbumMode.DUPLICATE_COPY:
+                    self._process_duplicate_copy_mode(file_path, date_taken, file_albums, is_partner_shared)
+                elif self.config.album_mode == AlbumMode.REVERSE_SHORTCUT:
+                    self._process_reverse_shortcut_mode(file_path, date_taken, file_albums, is_partner_shared)
+                elif self.config.album_mode == AlbumMode.JSON:
+                    self._process_json_mode(file_path, date_taken, file_albums, is_partner_shared)
+                else:  # AlbumMode.NOTHING
+                    self._process_nothing_mode(file_path, date_taken, is_partner_shared)
+                    
             except Exception as e:
                 self.logger.error(f"Could not move {file_path}: {e}")
+        
+        # Finalize any mode-specific operations
+        if self.config.album_mode == AlbumMode.JSON:
+            self._finalize_json_mode()
     
     def _update_creation_times(self, media_files: List[Path], file_dates: Dict[Path, Optional[datetime]]) -> None:
         """Update file creation times to match extracted dates"""
@@ -585,7 +552,7 @@ class GpthCoreApi:
                     continue
         
         # Estimate additional space needed (conservative estimate)
-        multiplier = 2.0 if not self.config.skip_albums else 1.1
+        multiplier = 2.0 if self.config.album_mode != AlbumMode.NOTHING else 1.1
         estimated_space = int(total_size * multiplier)
         
         return {
@@ -625,28 +592,104 @@ class GpthCoreApi:
                 }
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return {
-                'is_available': False,
+                'available': False,
                 'version': None,
+                'path': None,
                 'message': 'ExifTool not found. Some features may be limited.'
             }
+    
+    def validate_takeout_structure(self) -> bool:
+        """Validate that the input path contains a valid Google Photos Takeout structure"""
+        result = self.check_takeout_structure(self.config.input_path)
+        return result['is_valid']
+    
+    def estimate_space_requirements(self) -> Dict[str, Any]:
+        """Estimate disk space requirements using the configured input path"""
+        # Use the existing method with parameters
+        input_path = Path(self.config.input_path)
+        
+        if not input_path.exists():
+            raise Exception('Input directory does not exist')
+        
+        total_size = 0
+        file_count = 0
+        
+        for file_path in input_path.rglob('*'):
+            if file_path.is_file():
+                try:
+                    total_size += file_path.stat().st_size
+                    file_count += 1
+                except OSError:
+                    continue
+        
+        # Estimate additional space needed (conservative estimate)
+        multiplier = 2.0 if self.config.album_mode != AlbumMode.NOTHING else 1.1
+        estimated_space = int(total_size * multiplier)
+        
+        # Get available space
+        available_space = self.get_available_space(str(input_path))
+        
+        return {
+            'input_size_gb': total_size / (1024**3),
+            'output_size_gb': estimated_space / (1024**3),
+            'available_space_gb': available_space / (1024**3) if available_space else 0,
+            'space_multiplier': multiplier,
+            'warning': 'Insufficient space!' if available_space and estimated_space > available_space else None
+        }
+    
+    def fix_dates_in_folder(self) -> ProcessingResult:
+        """Fix dates in any folder (not just Takeout) - special mode"""
+        start_time = datetime.now()
+        result = ProcessingResult(success=False)
+        
+        try:
+            self.logger.info(f"Fix mode: Processing folder {self.config.input_path}")
+            
+            # Discover media files
+            self._update_progress(2, "Discovering media files...")
+            media_files = self._discover_media_files()
+            result.total_files = len(media_files)
+            
+            # Extract dates
+            self._update_progress(4, "Extracting dates from metadata...")
+            file_dates = self._extract_dates(media_files)
+            
+            # Write EXIF data
+            if self.config.write_exif:
+                self._update_progress(5, "Writing EXIF metadata...")
+                self._write_exif_data(media_files, file_dates)
+            
+            # Update file timestamps
+            if self.config.update_creation_time:
+                self._update_progress(8, "Updating file timestamps...")
+                self._update_file_timestamps(media_files, file_dates)
+            
+            result.success = True
+            result.processed_files = len(media_files)
+            
+        except Exception as e:
+            self.logger.error(f"Fix dates failed: {e}")
+            result.errors.append(str(e))
+        
+        result.processing_time = (datetime.now() - start_time).total_seconds()
+        return result
+    
+    def cancel(self):
+        """Cancel the current processing operation"""
+        self.cancel_processing()
+    
+    def _update_file_timestamps(self, media_files: List[Path], file_dates: Dict[Path, Optional[datetime]]):
         """Update file creation times based on extracted dates"""
         self.logger.info("Updating creation times...")
-        output_path = Path(self.config.output_path)
         
         for file_path in tqdm(media_files, desc="Updating timestamps", disable=not self.config.verbose):
             try:
                 date_taken = file_dates.get(file_path)
-                if date_taken:
-                    # Find the moved file in output directory
-                    year = date_taken.year
-                    month = date_taken.month
-                    dest_file = output_path / str(year) / f"{month:02d}" / file_path.name
-                    
-                    if dest_file.exists():
-                        # Set file modification time
-                        timestamp = date_taken.timestamp()
-                        os.utime(dest_file, (timestamp, timestamp))
-                        self.logger.debug(f"Updated timestamp for {dest_file}")
+                if date_taken and file_path.exists():
+                    # Set file modification time
+                    timestamp = date_taken.timestamp()
+                    os.utime(file_path, (timestamp, timestamp))
+                    self.logger.debug(f"Updated timestamp for {file_path}")
                         
             except Exception as e:
                 self.logger.warning(f"Could not update timestamp for {file_path}: {e}")

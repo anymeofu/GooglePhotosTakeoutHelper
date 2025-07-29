@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from ..core.gpth_core_api import GpthCoreApi, ProcessingConfig, ProcessingResult
+from ..core.gpth_core_api import GooglePhotosTakeoutHelper, ProcessingConfig, ProcessingResult, AlbumMode, ExtensionFixMode
 
 class ProgressReporter:
     """Simple progress reporter for CLI"""
@@ -17,6 +17,7 @@ class ProgressReporter:
         self.verbose = verbose
         self.current_step = 0
         self.total_steps = 8
+    
     def update(self, step: int, message: str) -> None:
         """Update progress display"""
         self.current_step = step
@@ -26,6 +27,7 @@ class ProgressReporter:
             # Simple progress indicator
             progress = "█" * step + "░" * (self.total_steps - step)
             click.echo(f"\r[{progress}] {message}", nl=False)
+    
     def finish(self) -> None:
         """Finish progress display"""
         if not self.verbose:
@@ -44,400 +46,352 @@ def cli(ctx, verbose):
 
 @cli.command()
 @click.argument('input_path', type=click.Path(exists=True, file_okay=False, dir_okay=True))
-@click.argument('output_path', type=click.Path(file_okay=False, dir_okay=True))
-@click.option('--skip-extras', is_flag=True, default=True, 
-              help='Skip extra files (edited versions, etc.)')
-@click.option('--skip-albums', is_flag=True, default=False,
-              help='Skip album organization')
-@click.option('--keep-duplicates', is_flag=True, default=False,
-              help='Keep duplicate files instead of removing them')
-@click.option('--no-fix-time', is_flag=True, default=False,
-              help='Do not fix file creation times')
-@click.option('--no-exiftool', is_flag=True, default=False,
-              help='Do not use ExifTool for metadata')
-@click.option('--threads', '-t', type=int, default=4,
-              help='Number of threads for processing')
+@click.option('--output', '-o', 'output_path', type=click.Path(file_okay=False, dir_okay=True),
+              help='Output directory for organized photos')
+@click.option('--albums', type=click.Choice(['shortcut', 'duplicate-copy', 'reverse-shortcut', 'json', 'nothing']),
+              default='shortcut', help='Album handling mode')
+@click.option('--divide-to-dates', type=click.IntRange(0, 3), default=0,
+              help='Date-based folder structure: 0=single folder, 1=year, 2=year/month, 3=year/month/day')
+@click.option('--divide-partner-shared', is_flag=True, default=False,
+              help='Separate partner shared media into PARTNER_SHARED folder')
+@click.option('--skip-extras', is_flag=True, default=True,
+              help='Skip extra images like "-edited" versions')
+@click.option('--write-exif/--no-write-exif', default=True,
+              help='Write GPS coordinates and dates to EXIF metadata')
+@click.option('--transform-pixel-mp', is_flag=True, default=False,
+              help='Convert Pixel Motion Photos (.MP/.MV) to .mp4')
+@click.option('--guess-from-name/--no-guess-from-name', default=True,
+              help='Extract dates from filenames')
+@click.option('--update-creation-time', is_flag=True, default=False,
+              help='Update creation time to match modified time (Windows only)')
+@click.option('--limit-filesize', is_flag=True, default=False,
+              help='Skip files larger than 64MB (for low-RAM systems)')
+@click.option('--fix-extensions', type=click.Choice(['none', 'standard', 'conservative', 'solo']),
+              default='standard', help='Extension fixing mode')
 @click.option('--dry-run', is_flag=True, default=False,
-              help='Simulate processing without making changes (saves time and processing power)')
+              help='Simulate processing without making changes')
+@click.option('--max-threads', type=click.IntRange(1, 16), default=4,
+              help='Maximum number of processing threads')
 @click.pass_context
-def process(ctx, input_path, output_path, skip_extras, skip_albums,
-           keep_duplicates, no_fix_time, no_exiftool, threads, dry_run):
-    """Process Google Photos takeout archive
+def process(ctx, input_path, output_path, albums, divide_to_dates, divide_partner_shared,
+           skip_extras, write_exif, transform_pixel_mp, guess_from_name, 
+           update_creation_time, limit_filesize, fix_extensions, dry_run, max_threads):
+    """Process Google Photos Takeout export"""
     
-    INPUT_PATH: Path to the extracted Google Photos takeout folder
-    OUTPUT_PATH: Path where organized photos should be placed
-    """
-    verbose = ctx.obj.get('verbose', False)
+    if not output_path:
+        output_path = str(Path(input_path).parent / "organized_photos")
+        click.echo(f"No output path specified, using: {output_path}")
     
     # Create configuration
     config = ProcessingConfig(
         input_path=input_path,
         output_path=output_path,
+        album_mode=AlbumMode(albums),
+        date_division=divide_to_dates,
+        divide_partner_shared=divide_partner_shared,
         skip_extras=skip_extras,
-        skip_albums=skip_albums,
-        keep_duplicates=keep_duplicates,
-        fix_creation_time=not no_fix_time,
-        use_exiftool=not no_exiftool,
-        max_threads=threads,
-        verbose=verbose,
-        dry_run=dry_run
+        write_exif=write_exif,
+        transform_pixel_mp=transform_pixel_mp,
+        guess_from_name=guess_from_name,
+        update_creation_time=update_creation_time,
+        limit_filesize=limit_filesize,
+        extension_fix_mode=ExtensionFixMode(fix_extensions),
+        verbose=ctx.obj['verbose'],
+        fix_mode=False,
+        dry_run=dry_run,
+        max_threads=max_threads
     )
     
-    # Setup progress reporting
-    progress = ProgressReporter(verbose=verbose)
+    # Show configuration summary
+    if dry_run:
+        click.echo(click.style("DRY RUN MODE - No files will be modified", fg='yellow'))
     
-    # Create API instance
-    api = GpthCoreApi(config)
-    api.set_progress_callback(progress.update)
+    click.echo(f"Input:  {input_path}")
+    click.echo(f"Output: {output_path}")
+    click.echo(f"Album mode: {albums}")
+    if divide_to_dates > 0:
+        division_names = ["single folder", "year", "year/month", "year/month/day"]
+        click.echo(f"Date organization: {division_names[divide_to_dates]}")
+    if divide_partner_shared:
+        click.echo("Partner shared media will be separated")
+    
+    # Initialize and run
+    progress = ProgressReporter(ctx.obj['verbose'])
+    gpth = GooglePhotosTakeoutHelper(config)
+    gpth.set_progress_callback(lambda msg, current=None, total=None: progress.update(progress.current_step + 1, str(msg)))
     
     try:
-        # Display welcome message
-        click.echo(click.style("🚀 Google Photos Takeout Helper", fg='blue', bold=True))
-        click.echo(f"Input: {input_path}")
-        click.echo(f"Output: {output_path}")
-        click.echo()
-        
-        # Validate paths first
-        click.echo("Validating paths...")
-        valid, errors = api.validate_paths()
-        if not valid:
-            for error in errors:
-                click.echo(click.style(f"❌ {error}", fg='red'))
-            sys.exit(1)
-        
-        # Discover takeout structure
-        click.echo("Analyzing takeout structure...")
-        structure = api.discover_takeout_structure()
-        
-        click.echo(f"📁 Found {structure['total_files']} total files")
-        click.echo(f"📸 Found {structure['media_files']} media files") 
-        click.echo(f"📄 Found {structure['json_files']} metadata files")
-        click.echo(f"⏱️  Estimated processing time: {structure['estimated_processing_time']:.1f} seconds")
-        
-        if not structure['has_photos']:
-            click.echo(click.style("⚠️  Warning: No Google Photos folders detected", fg='yellow'))
-        
-        if structure['has_albums'] and not skip_albums:
-            click.echo("🎨 Albums detected and will be processed")
-        
-        # Confirm processing
-        if not click.confirm(f"\nProcess {structure['media_files']} media files?"):
-            click.echo("Operation cancelled.")
-            sys.exit(0)
-        
-        click.echo()
-        click.echo("Processing takeout data...")
-        
-        # Process the takeout
-        result = api.process_takeout()
-        
-        # Finish progress display
+        result = gpth.process_takeout()
         progress.finish()
         
-        # Display results
         if result.success:
-            click.echo(click.style("✅ Processing completed successfully!", fg='green', bold=True))
+            mode_text = "DRY RUN - " if dry_run else ""
+            click.echo(click.style(f"✓ {mode_text}Processing completed successfully!", fg='green'))
+            click.echo(f"Total files: {result.total_files}")
+            click.echo(f"Processed: {result.processed_files}")
+            if result.duplicates_removed > 0:
+                click.echo(f"Duplicates removed: {result.duplicates_removed}")
+            if result.albums_found > 0:
+                click.echo(f"Albums found: {result.albums_found}")
+            click.echo(f"Processing time: {result.processing_time:.1f} seconds")
         else:
-            click.echo(click.style("❌ Processing failed!", fg='red', bold=True))
-        
-        click.echo()
-        click.echo("📊 Results:")
-        click.echo(f"   Total files: {result.total_files}")
-        click.echo(f"   Processed: {result.processed_files}")
-        click.echo(f"   Duplicates removed: {result.duplicates_removed}")
-        click.echo(f"   Albums found: {result.albums_found}")
-        click.echo(f"   Processing time: {result.processing_time:.2f} seconds")
-        
-        if result.errors:
-            click.echo()
-            click.echo(click.style("❌ Errors:", fg='red'))
+            click.echo(click.style("✗ Processing failed!", fg='red'))
             for error in result.errors:
-                click.echo(f"   • {error}")
-        
-        if result.warnings:
-            click.echo()
-            click.echo(click.style("⚠️  Warnings:", fg='yellow'))
-            for warning in result.warnings:
-                click.echo(f"   • {warning}")
-        
-        if not result.success:
+                click.echo(f"Error: {error}")
             sys.exit(1)
             
     except KeyboardInterrupt:
-        click.echo()
-        click.echo(click.style("🛑 Processing cancelled by user", fg='yellow'))
+        click.echo("\nProcessing cancelled by user")
         sys.exit(1)
     except Exception as e:
-        click.echo()
-        click.echo(click.style(f"💥 Unexpected error: {str(e)}", fg='red'))
-        if verbose:
-            import traceback
-            traceback.print_exc()
+        click.echo(click.style(f"Error: {e}", fg='red'))
         sys.exit(1)
 
 @cli.command()
 @click.argument('input_path', type=click.Path(exists=True, file_okay=False, dir_okay=True))
 @click.pass_context
 def analyze(ctx, input_path):
-    """Analyze takeout structure without processing
-    
-    INPUT_PATH: Path to the extracted Google Photos takeout folder
-    """
-    verbose = ctx.obj.get('verbose', False)
+    """Analyze Google Photos Takeout structure"""
     
     config = ProcessingConfig(
         input_path=input_path,
         output_path="",  # Not needed for analysis
-        verbose=verbose
+        verbose=ctx.obj['verbose']
     )
     
-    api = GpthCoreApi(config)
+    gpth = GooglePhotosTakeoutHelper(config)
     
     try:
-        click.echo(click.style("🔍 Analyzing Google Photos Takeout", fg='blue', bold=True))
-        click.echo(f"Path: {input_path}")
-        click.echo()
+        structure = gpth.discover_takeout_structure()
         
-        structure = api.discover_takeout_structure()
+        click.echo(f"📁 Takeout Structure Analysis")
+        click.echo(f"Total files: {structure['total_files']}")
+        click.echo(f"Media files: {structure['media_files']}")
+        click.echo(f"JSON metadata files: {structure['json_files']}")
+        click.echo(f"Has Photos folders: {'Yes' if structure['has_photos'] else 'No'}")
+        click.echo(f"Has Albums: {'Yes' if structure['has_albums'] else 'No'}")
+        click.echo(f"Estimated processing time: {structure['estimated_processing_time']:.1f} minutes")
         
-        click.echo("📊 Takeout Structure Analysis:")
-        click.echo(f"   📁 Total files: {structure['total_files']}")
-        click.echo(f"   📸 Media files: {structure['media_files']}")
-        click.echo(f"   📄 JSON metadata files: {structure['json_files']}")
-        click.echo(f"   📷 Has Google Photos: {'Yes' if structure['has_photos'] else 'No'}")
-        click.echo(f"   🎨 Has albums: {'Yes' if structure['has_albums'] else 'No'}")
-        click.echo(f"   ⏱️  Estimated processing time: {structure['estimated_processing_time']:.1f} seconds")
-        
-        media_percentage = (structure['media_files'] / structure['total_files'] * 100) if structure['total_files'] > 0 else 0
-        click.echo(f"   📊 Media file ratio: {media_percentage:.1f}%")
-        
-        # Recommendations
-        click.echo()
-        click.echo("💡 Recommendations:")
-        if not structure['has_photos']:
-            click.echo("   ⚠️  This doesn't look like a Google Photos takeout")
-        if structure['media_files'] == 0:
-            click.echo("   ❌ No media files found")
-        elif structure['media_files'] < 100:
-            click.echo("   ✅ Small archive - processing should be quick")
-        elif structure['media_files'] < 1000:
-            click.echo("   ⏳ Medium archive - processing will take a few minutes")
-        else:
-            click.echo("   🕐 Large archive - processing may take 10+ minutes")
-        
-        if structure['json_files'] == 0:
-            click.echo("   ⚠️  No metadata files found - date extraction will be limited")
-        
-        if structure['has_albums']:
-            click.echo("   🎨 Albums detected - use --skip-albums if you don't want them")
-            
     except Exception as e:
-        click.echo(click.style(f"💥 Analysis failed: {str(e)}", fg='red'))
-        if verbose:
-            import traceback
-            traceback.print_exc()
+        click.echo(click.style(f"Error analyzing structure: {e}", fg='red'))
         sys.exit(1)
 
 @cli.command()
 @click.argument('input_path', type=click.Path(exists=True, file_okay=False, dir_okay=True))
 @click.pass_context
 def validate(ctx, input_path):
-    """Validate Google Photos takeout structure
-    
-    INPUT_PATH: Path to the extracted Google Photos takeout folder
-    """
-    verbose = ctx.obj.get('verbose', False)
+    """Validate Google Photos Takeout structure"""
     
     config = ProcessingConfig(
         input_path=input_path,
         output_path="",  # Not needed for validation
-        verbose=verbose
+        verbose=ctx.obj['verbose']
     )
     
-    api = GpthCoreApi(config)
+    gpth = GooglePhotosTakeoutHelper(config)
     
     try:
-        click.echo(click.style("🔍 Validating Google Photos Takeout", fg='blue', bold=True))
-        click.echo(f"Path: {input_path}")
-        click.echo()
+        # Use validation method that exists
+        is_valid = gpth.validate_takeout_structure()
+        result = {
+            'is_valid': is_valid,
+            'message': 'Valid Google Photos Takeout structure' if is_valid else 'Invalid structure',
+            'details': []
+        }
         
-        validation = api.validate_takeout_structure(input_path)
-        
-        if validation['is_valid']:
-            click.echo(click.style("✅ Valid takeout structure", fg='green'))
+        if result['is_valid']:
+            click.echo(click.style("✓ Valid Google Photos Takeout structure", fg='green'))
+            click.echo(result['message'])
+            for detail in result['details']:
+                click.echo(f"  • {detail}")
         else:
-            click.echo(click.style("❌ Invalid takeout structure", fg='red'))
-        
-        click.echo()
-        click.echo("📝 Details:")
-        for detail in validation['details']:
-            click.echo(f"   • {detail}")
-            
-        if not validation['is_valid']:
-            click.echo()
-            click.echo("💡 Tips:")
-            click.echo("   • Make sure you extracted all ZIP files to the same folder")
-            click.echo("   • Look for folders named 'Photos from YYYY'")
-            click.echo("   • Check if the path contains Google Photos export data")
+            click.echo(click.style("✗ Invalid Takeout structure", fg='red'))
+            click.echo(result['message'])
+            for detail in result['details']:
+                click.echo(f"  • {detail}")
             sys.exit(1)
             
     except Exception as e:
-        click.echo(click.style(f"💥 Validation failed: {str(e)}", fg='red'))
-        if verbose:
-            import traceback
-            traceback.print_exc()
+        click.echo(click.style(f"Error validating structure: {e}", fg='red'))
         sys.exit(1)
 
 @cli.command()
 @click.argument('input_path', type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.option('--albums', type=click.Choice(['shortcut', 'duplicate-copy', 'reverse-shortcut', 'json', 'nothing']),
+              default='shortcut', help='Album handling mode for estimation')
 @click.pass_context
-def estimate(ctx, input_path):
-    """Estimate disk space requirements
-    
-    INPUT_PATH: Path to the extracted Google Photos takeout folder
-    """
-    verbose = ctx.obj.get('verbose', False)
+def estimate(ctx, input_path, albums):
+    """Estimate disk space requirements"""
     
     config = ProcessingConfig(
         input_path=input_path,
         output_path="",  # Not needed for estimation
-        verbose=verbose
+        album_mode=AlbumMode(albums),
+        verbose=ctx.obj['verbose']
     )
     
-    api = GpthCoreApi(config)
+    gpth = GooglePhotosTakeoutHelper(config)
     
     try:
-        click.echo(click.style("📊 Estimating Space Requirements", fg='blue', bold=True))
-        click.echo(f"Path: {input_path}")
-        click.echo()
+        estimates = gpth.estimate_space_requirements()
         
-        estimate = api.estimate_space_requirements(input_path)
+        click.echo(f"💾 Space Requirements Estimate")
+        click.echo(f"Input size: {estimates['input_size_gb']:.2f} GB")
+        click.echo(f"Estimated output size: {estimates['output_size_gb']:.2f} GB")
+        click.echo(f"Available space: {estimates['available_space_gb']:.2f} GB")
+        click.echo(f"Album mode: {albums}")
+        click.echo(f"Space multiplier: {estimates['space_multiplier']:.1f}x")
         
-        def format_size(size_bytes):
-            """Format size in bytes to human readable format"""
-            for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-                if size_bytes < 1024.0:
-                    return f"{size_bytes:.1f} {unit}"
-                size_bytes /= 1024.0
-            return f"{size_bytes:.1f} PB"
-        
-        click.echo(f"📁 Current size: {format_size(estimate['current_size'])}")
-        click.echo(f"📈 Estimated space needed: {format_size(estimate['estimated_required_space'])}")
-        click.echo(f"➕ Additional space needed: {format_size(estimate['additional_space_needed'])}")
-        click.echo(f"📊 Space multiplier: {estimate['space_multiplier']:.1f}x")
-        click.echo(f"📄 File count: {estimate['file_count']:,}")
-        
-        # Check available space
-        available = api.get_available_space(input_path)
-        if available:
-            click.echo(f"💾 Available space: {format_size(available)}")
+        if estimates['warning']:
+            click.echo(click.style(f"⚠️  {estimates['warning']}", fg='yellow'))
+        else:
+            click.echo(click.style("✓ Sufficient space available", fg='green'))
             
-            if available < estimate['estimated_required_space']:
-                click.echo(click.style("⚠️  Warning: Insufficient disk space!", fg='red'))
-                shortfall = estimate['estimated_required_space'] - available
-                click.echo(f"   Need {format_size(shortfall)} more space")
-            else:
-                click.echo(click.style("✅ Sufficient disk space available", fg='green'))
-        
     except Exception as e:
-        click.echo(click.style(f"💥 Estimation failed: {str(e)}", fg='red'))
-        if verbose:
-            import traceback
-            traceback.print_exc()
+        click.echo(click.style(f"Error estimating space: {e}", fg='red'))
+        sys.exit(1)
+
+@cli.command()
+@click.argument('folder_path', type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.option('--write-exif/--no-write-exif', default=True,
+              help='Write GPS coordinates and dates to EXIF metadata')
+@click.option('--update-creation-time', is_flag=True, default=False,
+              help='Update creation time to match modified time (Windows only)')
+@click.option('--dry-run', is_flag=True, default=False,
+              help='Simulate processing without making changes')
+@click.option('--max-threads', type=click.IntRange(1, 16), default=4,
+              help='Maximum number of processing threads')
+@click.pass_context
+def fix(ctx, folder_path, write_exif, update_creation_time, dry_run, max_threads):
+    """Fix dates in any folder (not just Takeout)"""
+    
+    if dry_run:
+        click.echo(click.style("DRY RUN MODE - No files will be modified", fg='yellow'))
+    
+    config = ProcessingConfig(
+        input_path=folder_path,
+        output_path=folder_path,  # Fix in place
+        write_exif=write_exif,
+        update_creation_time=update_creation_time,
+        verbose=ctx.obj['verbose'],
+        fix_mode=True,
+        dry_run=dry_run,
+        max_threads=max_threads
+    )
+    
+    click.echo(f"Fixing dates in: {folder_path}")
+    
+    progress = ProgressReporter(ctx.obj['verbose'])
+    gpth = GooglePhotosTakeoutHelper(config)
+    gpth.set_progress_callback(lambda msg, current=None, total=None: progress.update(progress.current_step + 1, str(msg)))
+    
+    try:
+        result = gpth.fix_dates_in_folder()
+        progress.finish()
+        
+        if result.success:
+            mode_text = "DRY RUN - " if dry_run else ""
+            click.echo(click.style(f"✓ {mode_text}Date fixing completed!", fg='green'))
+            click.echo(f"Files processed: {result.processed_files}")
+            click.echo(f"Processing time: {result.processing_time:.1f} seconds")
+        else:
+            click.echo(click.style("✗ Date fixing failed!", fg='red'))
+            for error in result.errors:
+                click.echo(f"Error: {error}")
+            sys.exit(1)
+            
+    except KeyboardInterrupt:
+        click.echo("\nProcessing cancelled by user")
+        sys.exit(1)
+    except Exception as e:
+        click.echo(click.style(f"Error: {e}", fg='red'))
+        sys.exit(1)
+
+@cli.command('check-deps')
+@click.pass_context
+def check_deps(ctx):
+    """Check for required dependencies"""
+    
+    config = ProcessingConfig(input_path=".", output_path=".")  # Dummy config
+    gpth = GooglePhotosTakeoutHelper(config)
+    
+    try:
+        # Check ExifTool
+        exif_status = gpth.check_exiftool_status()
+        
+        click.echo("🔧 Dependency Check")
+        click.echo(f"ExifTool: {'✓ Available' if exif_status['available'] else '✗ Not found'}")
+        
+        if exif_status['available']:
+            click.echo(f"  Version: {exif_status['version']}")
+            click.echo(f"  Path: {exif_status['path']}")
+            click.echo(click.style("  All features available", fg='green'))
+        else:
+            click.echo(click.style("  Limited functionality - some features may not work", fg='yellow'))
+            click.echo("  Install ExifTool for full functionality:")
+            click.echo("    • Windows: choco install exiftool")
+            click.echo("    • Mac: brew install exiftool")
+            click.echo("    • Linux: sudo apt install libimage-exiftool-perl")
+        
+        # Check Python dependencies
+        try:
+            import PIL
+            click.echo("PIL/Pillow: ✓ Available")
+        except ImportError:
+            click.echo(click.style("PIL/Pillow: ✗ Not found", fg='red'))
+            click.echo("  Install with: pip install Pillow")
+        
+        try:
+            import dateutil
+            click.echo("python-dateutil: ✓ Available")
+        except ImportError:
+            click.echo(click.style("python-dateutil: ✗ Not found", fg='red'))
+            click.echo("  Install with: pip install python-dateutil")
+        
+        try:
+            import tqdm
+            click.echo("tqdm: ✓ Available")
+        except ImportError:
+            click.echo(click.style("tqdm: ✗ Not found", fg='red'))
+            click.echo("  Install with: pip install tqdm")
+            
+    except Exception as e:
+        click.echo(click.style(f"Error checking dependencies: {e}", fg='red'))
         sys.exit(1)
 
 @cli.command()
 @click.pass_context
-def check_deps(ctx):
-    """Check system dependencies"""
-    verbose = ctx.obj.get('verbose', False)
+def info(ctx):
+    """Show information about Google Photos Takeout Helper"""
     
-    # Dummy config for API instantiation
-    config = ProcessingConfig(input_path="", output_path="")
-    api = GpthCoreApi(config)
-    
-    click.echo(click.style("🔧 System Dependencies Check", fg='blue', bold=True))
-    click.echo()
-    
-    # Check Python dependencies
-    deps_status = []
-    
-    # Check PIL/Pillow
-    try:
-        from PIL import Image, ExifTags
-        deps_status.append(("Pillow (PIL)", True, "Image processing available"))
-    except ImportError:
-        deps_status.append(("Pillow (PIL)", False, "Install with: pip install pillow"))
-    
-    # Check dateutil
-    try:
-        from dateutil import parser
-        deps_status.append(("python-dateutil", True, "Date parsing available"))
-    except ImportError:
-        deps_status.append(("python-dateutil", False, "Install with: pip install python-dateutil"))
-    
-    # Check tqdm
-    try:
-        from tqdm import tqdm
-        deps_status.append(("tqdm", True, "Progress bars available"))
-    except ImportError:
-        deps_status.append(("tqdm", False, "Install with: pip install tqdm"))
-    
-    # Check ExifTool
-    exiftool_info = api.check_exiftool_status()
-    deps_status.append(("ExifTool", exiftool_info['is_available'], exiftool_info['message']))
-    
-    # Display results
-    all_good = True
-    for name, available, message in deps_status:
-        if available:
-            click.echo(click.style(f"✅ {name}", fg='green') + f" - {message}")
-        else:
-            click.echo(click.style(f"❌ {name}", fg='red') + f" - {message}")
-            all_good = False
-    
-    click.echo()
-    if all_good:
-        click.echo(click.style("🎉 All dependencies are available!", fg='green', bold=True))
-    else:
-        click.echo(click.style("⚠️  Some dependencies are missing", fg='yellow', bold=True))
-        click.echo("Run: pip install pillow python-dateutil tqdm")
-        if not exiftool_info['is_available']:
-            click.echo("Install ExifTool from: https://exiftool.org/")
-
-@cli.command()
-def info():
-    """Show information about the tool"""
-    click.echo(click.style("Google Photos Takeout Helper", fg='blue', bold=True))
-    click.echo("Version: 4.1.0")
-    click.echo()
-    click.echo("This tool helps organize Google Photos takeout exports into a")
-    click.echo("clean, chronological folder structure with proper metadata.")
-    click.echo()
+    click.echo("📸 Google Photos Takeout Helper v4.1.0")
+    click.echo("")
+    click.echo("Transform your chaotic Google Photos Takeout into organized photo libraries")
+    click.echo("with proper dates, albums, and metadata.")
+    click.echo("")
     click.echo("Features:")
-    click.echo("  📁 Organize photos by date")
-    click.echo("  🔗 Remove duplicates")
-    click.echo("  📅 Extract dates from EXIF/metadata")
-    click.echo("  🎨 Process albums")
-    click.echo("  ⏰ Fix file timestamps")
-    click.echo("  📊 Validate takeout structure")
-    click.echo("  💾 Estimate space requirements")
-    click.echo()
-    click.echo("Available Commands:")
-    click.echo("  analyze    - Analyze takeout structure")
-    click.echo("  validate   - Validate takeout structure")
+    click.echo("  • Organizes photos chronologically with correct dates")
+    click.echo("  • Restores album structure with multiple handling options")
+    click.echo("  • Fixes timestamps from JSON metadata and EXIF data")
+    click.echo("  • Writes GPS coordinates and timestamps back to media files")
+    click.echo("  • Removes duplicates automatically")
+    click.echo("  • Handles special formats (HEIC, Motion Photos, etc.)")
+    click.echo("  • Fixes mismatches of file name and mime type")
+    click.echo("")
+    click.echo("Commands:")
+    click.echo("  process    - Process Google Photos Takeout export")
+    click.echo("  analyze    - Analyze Takeout structure")
+    click.echo("  validate   - Validate Takeout structure")
     click.echo("  estimate   - Estimate space requirements")
-    click.echo("  process    - Process takeout data")
-    click.echo("  check-deps - Check system dependencies")
+    click.echo("  fix        - Fix dates in any folder")
+    click.echo("  check-deps - Check dependencies")
     click.echo("  info       - Show this information")
-    click.echo()
-    click.echo("Usage Examples:")
-    click.echo("  gpth analyze /path/to/takeout")
-    click.echo("  gpth validate /path/to/takeout")
-    click.echo("  gpth estimate /path/to/takeout")
-    click.echo("  gpth process /path/to/takeout /path/to/output")
-    click.echo("  gpth process input/ output/ --skip-albums --verbose")
-    click.echo("  gpth check-deps")
+    click.echo("")
+    click.echo("For help on a specific command, use: gpth <command> --help")
+
+def main():
+    """Entry point for the CLI"""
+    cli()
 
 if __name__ == '__main__':
-    cli()
+    main()
