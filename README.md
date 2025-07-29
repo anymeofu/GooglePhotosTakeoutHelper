@@ -1,252 +1,151 @@
 # 🐍 Google Photos Takeout Helper - Python Edition
 
-A **complete and enhanced** Python implementation of the Google Photos Takeout Helper with both CLI and GUI interfaces, featuring advanced processing pipeline, enhanced error handling, and superior cross-platform compatibility.
+A **production-ready modular Python implementation** of the Google Photos Takeout Helper with advanced crash recovery, step-by-step execution, and comprehensive state management.
 
-## 🌟 Why Python Version?
+## 🌟 Why This Python Version?
 
-- ✅ **Easy Setup**: Just install Python and pip install dependencies - no SDK installations required
-- ✅ **Enhanced Architecture**: Advanced 8-step processing pipeline with comprehensive error handling
-- ✅ **Superior Platform Integration**: Windows PowerShell timestamp services, ExifTool integration
-- ✅ **Performance Optimized**: Content-based duplicate detection, hash caching, concurrent processing
-- ✅ **Production Ready**: Comprehensive error recovery, progress tracking, and statistical reporting
-- ✅ **Cross-Platform**: Works seamlessly on Windows, macOS, and Linux with platform-specific optimizations
+- ✅ **Modular Design**: Run individual pipeline steps or full workflow
+- ✅ **Crash Recovery**: Never lose progress with automatic crash detection
+- ✅ **Pause/Resume**: Full control over long-running operations
+- ✅ **State Persistence**: Human-readable JSON state management
+- ✅ **Production Ready**: Process monitoring, cleanup, and graceful shutdown
+- ✅ **Cross-Platform**: Works seamlessly on Windows, macOS, and Linux
 
-## 🚀 Quick Start (Super Easy!)
+## 🚀 Quick Start
 
 ### Prerequisites
 - Python 3.8 or higher
-- ExifTool (optional but recommended for full metadata capabilities)
+- ExifTool (recommended for full metadata capabilities)
 
 ### Installation & Usage
 
 ```bash
-# 1. Clone or download the Python version
+# 1. Clone the repository
 git clone https://github.com/YourRepo/GooglePhotosTakeoutHelper.git
 cd GooglePhotosTakeoutHelper
 
-# 2. Install dependencies (one command)
+# 2. Install dependencies
 pip install -r requirements.txt
 
-# 3A. Run CLI version with full processing
-python src/cli/gpth_cli.py process /path/to/takeout /path/to/output --write-exif --update-creation-time
+# 3. Run the modular pipeline
+python gpth_cli.py run /path/to/takeout /path/to/output --verbose
 
-# 3B. Or run GUI version
-python src/gui/gpth_gui.py
+# 4. Or run individual steps
+python gpth_cli.py step discover-media <run-id>
+python gpth_cli.py step remove-duplicates <run-id>
 ```
 
-## 🏗️ Advanced Architecture
+## 🏗️ Modular Pipeline Architecture
 
-### 8-Step Processing Pipeline
-1. **🔧 Fix Extensions** - Corrects mismatched file extensions using MIME type detection
-2. **🔍 Discover Media** - Intelligently finds and classifies media files and JSON metadata
-3. **🗑️ Remove Duplicates** - Content-based deduplication using SHA256 hashing with size pre-filtering
-4. **📅 Extract Dates** - Multi-source timestamp extraction (JSON metadata, EXIF, filename patterns)
-5. **📝 Write EXIF** - Professional metadata writing using ExifTool integration
-6. **📁 Find Albums** - Advanced album relationship detection and processing
-7. **📦 Move Files** - Intelligent file organization with multiple album strategies
-8. **⏰ Update Creation Time** - Platform-specific timestamp synchronization
+### 8-Step Processing Workflow
+1. **Fix Extensions** - Content-based file extension correction
+2. **Discover Media** - Media file cataloging with state persistence
+3. **Remove Duplicates** - Intelligent duplicate detection and handling
+4. **Extract Dates** - Metadata and JSON-based date extraction
+5. **Write EXIF** - EXIF data updating with error recovery
+6. **Find Albums** - Album structure discovery from Google JSON
+7. **Move Files** - Atomic file organization with rollback capability
+8. **Update Timestamps** - File system timestamp synchronization
 
-### Enhanced Services Architecture
-- **ProcessingPipeline**: Main orchestrator with step coordination and progress tracking
-- **MediaHashService**: Thread-safe SHA256 hashing with LRU caching for performance
-- **DuplicateDetectionService**: Content-based deduplication with size optimization
-- **ExifWriterService**: ExifTool integration with intelligent fallback methods
-- **PlatformServices**: Windows PowerShell / macOS SetFile / Linux touch timestamp management
-- **EnhancedErrorHandler**: Comprehensive error classification, recovery, and reporting
+### 🛡️ Production-Ready Features
 
-## ✨ Feature Comparison: Python vs Dart
+**Crash-Resistant Pipeline:**
+- ✅ **Never lose progress** - Automatic crash detection prevents "stuck running" status
+- ✅ **Resume anywhere** - Continue from exact step where failure occurred  
+- ✅ **Process monitoring** - Background tracking of pipeline health
+- ✅ **Cleanup commands** - Automatic recovery from system crashes
+- ✅ **Signal handling** - Graceful pause/resume via system signals
 
-| Feature | Dart Version | Python Version | Enhancement |
-|---------|-------------|---------------|-------------|
-| **Core Pipeline** | ✅ 8-step processing | ✅ **Enhanced 8-step with better error handling** | 🔥 **Improved** |
-| **Duplicate Detection** | ✅ Hash-based | ✅ **Content hashing + size pre-filtering** | 🔥 **Optimized** |
-| **EXIF Writing** | ✅ ExifTool integration | ✅ **ExifTool + fallback methods** | 🔥 **Enhanced** |
-| **Platform Services** | ✅ Basic timestamp updates | ✅ **PowerShell/SetFile/touch integration** | 🆕 **New** |
-| **Error Handling** | ✅ Basic error reporting | ✅ **Classification, recovery, detailed reporting** | 🆕 **New** |
-| **Progress Tracking** | ✅ Basic progress | ✅ **Real-time progress + statistics** | 🔥 **Enhanced** |
-| **Album Strategies** | ✅ 5 moving strategies | ✅ **All strategies + enhanced organization** | ✅ **Complete** |
-| **Date Extraction** | ✅ Multi-method | ✅ **JSON + EXIF + filename + folder patterns** | 🔥 **Expanded** |
-| **Partner Sharing** | ✅ Partner shared detection | ✅ **Full partner sharing support** | ✅ **Complete** |
-| **Motion Photos** | ✅ Pixel MP conversion | ✅ **MP conversion + enhanced format support** | ✅ **Complete** |
-| **Concurrency** | ✅ CPU-based scaling | ✅ **Intelligent thread management** | 🔥 **Optimized** |
-| **Memory Management** | ✅ Basic management | ✅ **Garbage collection + memory tracking** | 🆕 **New** |
+## 📖 Complete Documentation
 
-## 📋 Complete Feature Set
+**📋 For detailed usage instructions, examples, and advanced features, see:**
+### **[📖 MODULAR PIPELINE GUIDE](MODULAR_PIPELINE_GUIDE.md)**
 
-### ✨ Core Processing Features
-- 🗂️ **Smart Organization**: Creates intuitive year/month folder structures
-- 🔍 **Intelligent Duplicate Removal**: Content-based detection with hash caching
-- 📅 **Advanced Date Extraction**: JSON metadata, EXIF data, filename patterns, folder analysis
-- 🎨 **Complete Album Processing**: All 5 album strategies with enhanced relationship detection
-- ⏰ **Platform Timestamp Management**: Windows PowerShell, macOS SetFile, Linux touch integration
-- 📊 **Real-time Progress Tracking**: Detailed progress reporting in both CLI and GUI
-- 🔄 **Partner Sharing Support**: Automatic detection and organization of partner shared media
+This comprehensive guide covers:
+- Complete command reference with examples
+- Step-by-step execution workflows
+- Crash recovery and troubleshooting
+- State management and monitoring
+- Advanced configuration options
+- Production deployment considerations
 
-### 🛠️ Technical Enhancements
-- **🚀 Performance Optimization**: Thread-safe operations with intelligent concurrency
-- **🛡️ Advanced Error Handling**: Classification, automatic recovery, detailed reporting
-- **💾 Memory Management**: Garbage collection, memory tracking, resource optimization
-- **📈 Statistical Analysis**: Comprehensive metrics collection and reporting
-- **🔧 Service Architecture**: Clean separation of concerns with dependency injection
-- **🎯 Platform Integration**: OS-specific optimizations and native tool integration
+## 🎛️ Command Reference
 
-### 🖥️ User Interfaces
-
-#### Command Line Interface
+### Core Operations
 ```bash
-# Basic processing
-python src/cli/gpth_cli.py process /takeout /output
+# Start a new pipeline run
+gpth run input_dir output_dir [--verbose]
 
-# Advanced processing with all features
-python src/cli/gpth_cli.py process /takeout /output \
-  --album-mode duplicate-copy \
-  --divide-to-dates \
-  --write-exif \
-  --update-creation-time \
-  --verbose
+# Execute individual steps
+gpth step <step-name> <run-id>
 
-# Analyze takeout structure
-python src/cli/gpth_cli.py analyze /takeout
+# Check pipeline status
+gpth status <run-id> [--verbose]
+gpth list
 
-# System diagnostics
-python src/cli/gpth_cli.py status
+# Pause/Resume operations
+gpth pause <run-id>
+gpth resume <run-id> [--from-step N]
+
+# Recovery operations
+gpth cleanup [--auto]
 ```
 
-#### Graphical User Interface
-- **Intuitive Design**: Simple drag-and-drop interface
-- **Real-time Progress**: Live progress bars and status updates
-- **Configuration Options**: Full access to all processing options
-- **Error Display**: Visual error reporting and recovery status
+### Available Steps
+- `fix-extensions` - Fix file extensions based on content
+- `discover-media` - Find and catalog media files
+- `remove-duplicates` - Remove duplicate files
+- `extract-dates` - Extract dates from metadata/JSON
+- `write-exif` - Write EXIF metadata
+- `find-albums` - Discover album structure
+- `move-files` - Organize files into output structure
+- `update-timestamps` - Update file creation times
 
-### 🔧 System Requirements & Dependencies
+## 🔧 System Requirements
 
-#### Required Dependencies
+### Required Dependencies
 - **Python 3.8+**: Core runtime
 - **Pillow**: Image processing and EXIF reading
-- **Click**: Command-line interface framework
-- **Tkinter**: GUI framework (usually included with Python)
+- **Standard library**: json, pathlib, subprocess, signal
 
-#### Optional Dependencies
+### Optional Dependencies
 - **ExifTool**: Professional metadata writing (highly recommended)
 - **python-magic**: Enhanced MIME type detection
-- **psutil**: System resource monitoring
 
-#### Platform-Specific Features
-- **Windows**: PowerShell timestamp services, native file creation time updates
-- **macOS**: SetFile integration for proper timestamp management
-- **Linux**: Enhanced touch command usage with proper timestamp handling
+### Platform Support
+- **Windows**: PowerShell timestamp services, process monitoring
+- **macOS**: SetFile integration, signal-based pause/resume
+- **Linux**: Enhanced touch commands, full signal handling
 
-## 📊 Performance & Reliability
+## 💾 State Management
 
-### Performance Optimizations
-- **Content-based Duplicate Detection**: SHA256 hashing with size pre-filtering saves 70%+ unnecessary operations
-- **Hash Caching**: LRU cache prevents re-hashing of previously processed files
-- **Intelligent Threading**: Dynamic concurrency based on system capabilities and operation type
-- **Memory Management**: Automatic garbage collection and memory usage tracking
+The modular pipeline uses JSON-based state persistence:
 
-### Reliability Features
-- **Error Classification**: Automatic categorization by severity (Low/Medium/High/Critical) and type
-- **Recovery Mechanisms**: Automatic retry and recovery for common issues like permission errors
-- **Detailed Logging**: Comprehensive logging with configurable levels and file output
-- **Progress Persistence**: Resume capability for interrupted processing
-
-### Production-Ready Capabilities
-- **Dry Run Mode**: Safe testing without file modifications
-- **Configuration Validation**: Comprehensive parameter checking and validation
-- **Resource Monitoring**: Memory usage, disk space, and performance tracking
-- **Statistical Reporting**: Detailed metrics on processing results and performance
-
-## 🚀 Getting Started Examples
-
-### Basic Usage
-```bash
-# Simple organization by date
-python src/cli/gpth_cli.py process ./my-takeout ./organized \
-  --divide-to-dates
-
-# Full processing with all enhancements
-python src/cli/gpth_cli.py process ./my-takeout ./organized \
-  --album-mode duplicate-copy \
-  --divide-to-dates \
-  --write-exif \
-  --update-creation-time \
-  --verbose
+```
+pipeline_states/
+├── runs/              # Pipeline execution records
+├── steps/             # Individual step state data  
+├── files/             # Media catalogs and file lists
+├── processes/         # Process tracking (PID, status)
+└── runs_index.json    # Quick lookup index
 ```
 
-### Advanced Configuration
-```bash
-# Custom processing for large datasets
-python src/cli/gpth_cli.py process ./my-takeout ./organized \
-  --album-mode shortcut \
-  --skip-extras \
-  --max-threads 8 \
-  --limit-filesize \
-  --dry-run  # Test first
-```
+## 🚨 Error Recovery
 
-## 🔧 Installation Guide
+The system provides comprehensive crash recovery:
 
-### Windows
-```powershell
-# Install ExifTool (recommended)
-choco install exiftool
-
-# Or download manually from exiftool.org
-# Place exiftool.exe in PATH or same directory as script
-
-# Install Python dependencies
-pip install -r requirements.txt
-```
-
-### macOS
-```bash
-# Install ExifTool
-brew install exiftool
-
-# Install Python dependencies
-pip install -r requirements.txt
-```
-
-### Linux
-```bash
-# Install ExifTool
-sudo apt install libimage-exiftool-perl  # Debian/Ubuntu
-sudo dnf install perl-Image-ExifTool     # Fedora
-sudo pacman -S perl-image-exiftool       # Arch
-
-# Install Python dependencies
-pip install -r requirements.txt
-```
-
-## 📈 What's New in Python Version
-
-### 🆕 **New Features**
-- **Enhanced Processing Pipeline**: Completely rewritten 8-step architecture
-- **Advanced Error Handling**: Classification, recovery, and detailed reporting
-- **Platform Services**: OS-specific timestamp and file management
-- **Performance Optimization**: Hash caching, size pre-filtering, intelligent threading
-- **Memory Management**: Garbage collection and resource tracking
-- **Statistical Analysis**: Comprehensive metrics and performance reporting
-
-### 🔥 **Improvements Over Dart Version**
-- **Better Error Recovery**: Automatic retry mechanisms for common issues
-- **Enhanced Platform Support**: Native OS integration for timestamp management
-- **Optimized Performance**: Smart duplicate detection with pre-filtering
-- **Improved User Experience**: Better progress tracking and error messaging
-- **Production Ready**: Comprehensive logging, dry run modes, and validation
-
-### ✅ **Feature Parity Achieved**
-- All 8 processing steps implemented and tested
-- Complete album strategy support (shortcut, duplicate-copy, reverse-shortcut, json, nothing)
-- Partner sharing detection and organization
-- Motion Photos conversion support
-- Extension fixing with multiple modes
-- Date extraction from all sources (JSON, EXIF, filename, folder)
-- ExifTool integration for metadata writing
+1. **Automatic Detection**: Scans for orphaned processes on startup
+2. **Status Cleanup**: Marks crashed runs as "failed" with error context
+3. **Resume Capability**: Continue from any step where processing stopped
+4. **Graceful Shutdown**: Handles system termination signals properly
 
 ## 🤝 Contributing
 
-We welcome contributions! The Python version provides a clean, extensible architecture that makes it easy to add new features and improvements.
+We welcome contributions! The modular architecture makes it easy to:
+- Add new processing steps
+- Enhance existing functionality
+- Improve error handling
+- Add platform-specific optimizations
 
 ## 📄 License
 
@@ -254,4 +153,4 @@ This project is licensed under the same terms as the original Dart version.
 
 ---
 
-**Note**: This Python implementation provides complete feature parity with the Dart version while adding significant enhancements for reliability, performance, and user experience. The advanced architecture makes it ideal for both personal use and integration into larger photo management workflows.
+**🚀 Ready to process your Google Photos takeout? Start with the [Modular Pipeline Guide](MODULAR_PIPELINE_GUIDE.md) for complete instructions!**

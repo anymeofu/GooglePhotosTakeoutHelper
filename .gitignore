@@ -151,3 +151,25 @@ Thumbs.db
 output/
 temp/
 *.tmp
+
+# Pipeline state files and directories
+pipeline_states/
+*.pipeline_state
+*.run_state
+pipeline_runs/
+step_states/
+process_data/
+
+# Test data and outputs
+test_output/
+test_data/
+test_takeout/
+test_organized/
+
+# Temporary processing files
+*.processing
+*.partial
+*.backup
+duplicates_report.json
+processing_report.json
+error_report.json
