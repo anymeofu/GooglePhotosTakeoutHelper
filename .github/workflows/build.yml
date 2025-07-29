@@ -35,7 +35,7 @@ on:
 
 env:
   FLUTTER_VERSION: '3.24.5'
-  DART_VERSION: '3.8.0'
+  DART_VERSION: '3.5.4'
 
 jobs:
   # Build CLI binaries for multiple platforms
@@ -355,7 +355,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dart-version: ['3.8.0', 'stable']
+        dart-version: ['3.5.4', 'stable']
       fail-fast: false
 
     steps:
