@@ -6,6 +6,32 @@ on:
     tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Type of build to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - 'all'
+          - 'cli-only'
+          - 'gui-only'
+      platform:
+        description: 'Platform to build for (all, windows, macos, linux)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - 'all'
+          - 'windows'
+          - 'macos'
+          - 'linux'
+      create_release:
+        description: 'Create a pre-release with artifacts'
+        required: false
+        default: false
+        type: boolean
 
 env:
   FLUTTER_VERSION: '3.24.5'
@@ -16,39 +42,78 @@ jobs:
   build-cli:
     name: Build CLI (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    if: |
+      (github.event_name != 'workflow_dispatch') ||
+      (inputs.build_type == 'all' || inputs.build_type == 'cli-only')
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
             output-name: gpth-linux-x64
             output-ext: ''
+            platform: 'linux'
           - os: windows-latest
             output-name: gpth-windows-x64
             output-ext: '.exe'
+            platform: 'windows'
           - os: macos-latest
             output-name: gpth-macos-x64
             output-ext: ''
+            platform: 'macos'
 
     steps:
+    - name: Check platform filter
+      if: |
+        github.event_name == 'workflow_dispatch' &&
+        inputs.platform != 'all' &&
+        matrix.platform != inputs.platform
+      run: |
+        echo "Skipping build for ${{ matrix.platform }} (requested: ${{ inputs.platform }})"
+        exit 0
+
     - name: Checkout code
+      if: |
+        github.event_name != 'workflow_dispatch' ||
+        inputs.platform == 'all' ||
+        matrix.platform == inputs.platform
       uses: actions/checkout@v4
 
     - name: Setup Dart
+      if: |
+        github.event_name != 'workflow_dispatch' ||
+        inputs.platform == 'all' ||
+        matrix.platform == inputs.platform
       uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ env.DART_VERSION }}
 
     - name: Get dependencies
+      if: |
+        github.event_name != 'workflow_dispatch' ||
+        inputs.platform == 'all' ||
+        matrix.platform == inputs.platform
       run: dart pub get
 
     - name: Run tests
+      if: |
+        github.event_name != 'workflow_dispatch' ||
+        inputs.platform == 'all' ||
+        matrix.platform == inputs.platform
       run: dart test
 
     - name: Build CLI binary
+      if: |
+        github.event_name != 'workflow_dispatch' ||
+        inputs.platform == 'all' ||
+        matrix.platform == inputs.platform
       run: |
         dart compile exe bin/gpth_refactored.dart -o build/${{ matrix.output-name }}${{ matrix.output-ext }}
 
     - name: Upload CLI binary
+      if: |
+        github.event_name != 'workflow_dispatch' ||
+        inputs.platform == 'all' ||
+        matrix.platform == inputs.platform
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.output-name }}
@@ -59,6 +124,9 @@ jobs:
   build-gui:
     name: Build GUI (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
+    if: |
+      (github.event_name != 'workflow_dispatch') ||
+      (inputs.build_type == 'all' || inputs.build_type == 'gui-only')
     strategy:
       matrix:
         include:
@@ -73,55 +141,109 @@ jobs:
             build-args: --release
 
     steps:
+    - name: Check platform filter
+      if: |
+        github.event_name == 'workflow_dispatch' &&
+        inputs.platform != 'all' &&
+        matrix.platform != inputs.platform
+      run: |
+        echo "Skipping build for ${{ matrix.platform }} (requested: ${{ inputs.platform }})"
+        exit 0
+
     - name: Checkout code
+      if: |
+        github.event_name != 'workflow_dispatch' ||
+        inputs.platform == 'all' ||
+        matrix.platform == inputs.platform
       uses: actions/checkout@v4
 
     - name: Setup Flutter
+      if: |
+        github.event_name != 'workflow_dispatch' ||
+        inputs.platform == 'all' ||
+        matrix.platform == inputs.platform
       uses: subosito/flutter-action@v2
       with:
         flutter-version: ${{ env.FLUTTER_VERSION }}
         channel: 'stable'
 
     - name: Setup Linux dependencies
-      if: matrix.platform == 'linux'
+      if: |
+        matrix.platform == 'linux' && (
+          github.event_name != 'workflow_dispatch' ||
+          inputs.platform == 'all' ||
+          matrix.platform == inputs.platform
+        )
       run: |
         sudo apt-get update
         sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
 
     - name: Enable desktop platforms
+      if: |
+        github.event_name != 'workflow_dispatch' ||
+        inputs.platform == 'all' ||
+        matrix.platform == inputs.platform
       run: |
         flutter config --enable-linux-desktop
-        flutter config --enable-windows-desktop  
+        flutter config --enable-windows-desktop
         flutter config --enable-macos-desktop
 
     - name: Get dependencies
+      if: |
+        github.event_name != 'workflow_dispatch' ||
+        inputs.platform == 'all' ||
+        matrix.platform == inputs.platform
       run: flutter pub get
       working-directory: lib/gui
 
     - name: Build Flutter GUI
+      if: |
+        github.event_name != 'workflow_dispatch' ||
+        inputs.platform == 'all' ||
+        matrix.platform == inputs.platform
       run: flutter build ${{ matrix.platform }} ${{ matrix.build-args }}
       working-directory: lib/gui
 
     - name: Package Linux build
-      if: matrix.platform == 'linux'
+      if: |
+        matrix.platform == 'linux' && (
+          github.event_name != 'workflow_dispatch' ||
+          inputs.platform == 'all' ||
+          matrix.platform == inputs.platform
+        )
       run: |
         cd lib/gui/build/linux/x64/release/bundle
         tar -czf ../../../../../gpth-gui-linux-x64.tar.gz .
 
     - name: Package Windows build
-      if: matrix.platform == 'windows'
+      if: |
+        matrix.platform == 'windows' && (
+          github.event_name != 'workflow_dispatch' ||
+          inputs.platform == 'all' ||
+          matrix.platform == inputs.platform
+        )
       run: |
         cd lib/gui/build/windows/x64/runner/Release
         7z a ../../../../../gpth-gui-windows-x64.zip .
 
     - name: Package macOS build
-      if: matrix.platform == 'macos'
+      if: |
+        matrix.platform == 'macos' && (
+          github.event_name != 'workflow_dispatch' ||
+          inputs.platform == 'all' ||
+          matrix.platform == inputs.platform
+        )
       run: |
         cd lib/gui/build/macos/Build/Products/Release
         zip -r ../../../../../gpth-gui-macos-x64.zip *.app
 
     - name: Upload GUI artifact (Linux)
-      if: matrix.platform == 'linux'
+      if: |
+        matrix.platform == 'linux' && (
+          github.event_name != 'workflow_dispatch' ||
+          inputs.platform == 'all' ||
+          matrix.platform == inputs.platform
+        )
       uses: actions/upload-artifact@v4
       with:
         name: gpth-gui-linux-x64
@@ -129,7 +251,12 @@ jobs:
         retention-days: 90
 
     - name: Upload GUI artifact (Windows)
-      if: matrix.platform == 'windows'
+      if: |
+        matrix.platform == 'windows' && (
+          github.event_name != 'workflow_dispatch' ||
+          inputs.platform == 'all' ||
+          matrix.platform == inputs.platform
+        )
       uses: actions/upload-artifact@v4
       with:
         name: gpth-gui-windows-x64
@@ -137,7 +264,12 @@ jobs:
         retention-days: 90
 
     - name: Upload GUI artifact (macOS)
-      if: matrix.platform == 'macos'
+      if: |
+        matrix.platform == 'macos' && (
+          github.event_name != 'workflow_dispatch' ||
+          inputs.platform == 'all' ||
+          matrix.platform == inputs.platform
+        )
       uses: actions/upload-artifact@v4
       with:
         name: gpth-gui-macos-x64
@@ -149,7 +281,9 @@ jobs:
     name: Create Release
     needs: [build-cli, build-gui]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: |
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.create_release)
 
     steps:
     - name: Checkout code
@@ -166,13 +300,19 @@ jobs:
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        name: Release ${{ github.ref_name }}
+        name: ${{ github.event_name == 'workflow_dispatch' && 'Manual Build' || format('Release {0}', github.ref_name) }}
+        tag_name: ${{ github.event_name == 'workflow_dispatch' && format('build-{0}', github.run_number) || github.ref_name }}
         body: |
-          ## Google Photos Takeout Helper ${{ github.ref_name }}
+          ## Google Photos Takeout Helper ${{ github.event_name == 'workflow_dispatch' && format('Manual Build #{0}', github.run_number) || github.ref_name }}
+          
+          ${{ github.event_name == 'workflow_dispatch' && '**Manual Build Configuration:**' || '' }}
+          ${{ github.event_name == 'workflow_dispatch' && format('- Build Type: {0}', inputs.build_type) || '' }}
+          ${{ github.event_name == 'workflow_dispatch' && format('- Platform: {0}', inputs.platform) || '' }}
+          ${{ github.event_name == 'workflow_dispatch' && '' || '' }}
           
           ### CLI Binaries
           - **Linux x64**: `gpth-linux-x64`
-          - **Windows x64**: `gpth-windows-x64.exe`  
+          - **Windows x64**: `gpth-windows-x64.exe`
           - **macOS x64**: `gpth-macos-x64`
           
           ### GUI Applications
@@ -196,7 +336,7 @@ jobs:
           - Sufficient disk space (approximately 2x your takeout size)
           
           ---
-          **Note**: This is an automated release generated from tag ${{ github.ref_name }}
+          ${{ github.event_name == 'workflow_dispatch' && '**Note**: This is a manual build triggered via workflow dispatch' || format('**Note**: This is an automated release generated from tag {0}', github.ref_name) }}
         files: |
           artifacts/gpth-linux-x64/gpth-linux-x64
           artifacts/gpth-windows-x64/gpth-windows-x64.exe
@@ -205,7 +345,7 @@ jobs:
           artifacts/gpth-gui-windows-x64/gpth-gui-windows-x64.zip
           artifacts/gpth-gui-macos-x64/gpth-gui-macos-x64.zip
         draft: false
-        prerelease: false
+        prerelease: ${{ github.event_name == 'workflow_dispatch' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

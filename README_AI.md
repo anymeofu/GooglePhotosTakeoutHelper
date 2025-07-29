@@ -196,26 +196,57 @@ dart run bin/gpth_refactored.dart
 cd lib/gui && flutter run -d windows/macos/linux
 ```
 
-### GitHub Actions Binary Compilation
-The project will support automated binary building via GitHub Actions:
+### GitHub Actions Binary Compilation with Manual Triggers
+The project supports automated and manual binary building via GitHub Actions:
 
-**Planned Workflow Structure**:
+**Workflow Features**:
 ```yaml
 # .github/workflows/build.yml
 name: Build Binaries
-on: [push, release]
+on:
+  - push/pull_request (automatic)
+  - workflow_dispatch (manual trigger)
 jobs:
-  build-cli:
-    # Build CLI binaries for Windows, macOS, Linux
-  build-gui:
-    # Build GUI apps for Windows, macOS, Linux
-  release:
-    # Publish binaries to GitHub Releases
+  build-cli: # CLI binaries for Windows, macOS, Linux
+  build-gui: # GUI apps for Windows, macOS, Linux
+  release: # Publish binaries to GitHub Releases
+  test-compatibility: # Multi-version Dart testing
 ```
+
+**Manual Trigger Options**:
+- **Build Type**: 'all', 'cli-only', 'gui-only'
+- **Platform Filter**: 'all', 'windows', 'macos', 'linux'
+- **Release Creation**: Option to create pre-release with artifacts
 
 **Binary Outputs**:
 - CLI: Single executable per platform (`gpth-windows.exe`, `gpth-macos`, `gpth-linux`)
-- GUI: Platform-specific installers (`.msi`, `.dmg`, `.deb`/`.rpm`)
+- GUI: Platform-specific packages (`.tar.gz`, `.zip`)
+- Automatic release creation for tags, manual pre-releases for testing
+
+### Manual Build Triggers
+
+To manually trigger a build on GitHub:
+
+1. **Navigate to Actions**: Go to the GitHub repository → Actions tab
+2. **Select Workflow**: Click on "Build Binaries" workflow
+3. **Run Workflow**: Click "Run workflow" button
+4. **Configure Options**:
+   - **Build Type**: Choose what to build
+     - `all` - Build both CLI and GUI (default)
+     - `cli-only` - Build only CLI binaries
+     - `gui-only` - Build only GUI applications
+   - **Platform**: Choose target platforms
+     - `all` - Build for all platforms (default)
+     - `windows` - Windows only
+     - `macos` - macOS only
+     - `linux` - Linux only
+   - **Create Release**: Check to create a pre-release with artifacts
+
+**Use Cases**:
+- Test builds before tagging a release
+- Build platform-specific binaries to save CI time
+- Generate test builds for specific features
+- Create pre-releases for beta testing
 
 ## 🔧 Development Commands
 
