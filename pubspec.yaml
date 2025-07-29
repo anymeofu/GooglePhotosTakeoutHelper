@@ -8,51 +8,42 @@ environment:
   sdk: '>=3.5.0 <4.0.0'
 
 dependencies:
-  # CLI and Core dependencies
-  args: ^2.7.0
+  # CLI and Core dependencies - Dart 3.5.4 compatible versions
+  args: ^2.3.0
   path: 1.9.0
-  mime: ^2.0.0
-  collection: ^1.18.0
-  convert: ^3.1.1
-  crypto: ^3.0.3
-  console_bars: ^1.2.0
-  intl: ^0.20.2
-  file_picker_desktop: ^1.2.0
-  exif_reader: ^3.16.1
-  image: ^4.5.4
-  emoji_regex: ^0.0.5
-  archive: ^4.0.6
-  proper_filesize: ^1.0.2
-  unorm_dart: ^0.3.0
-  win32: ^5.13.0
-  ffi: ^2.0.0
-  coordinate_converter: ^1.2.3
+  mime: ^1.0.0
+  collection: ^1.16.0
+  convert: ^3.0.0
+  crypto: ^3.0.0
+  console_bars: ^1.0.0
+  intl: ^0.17.0
+  exif_reader: ^2.0.0
+  image: ^3.0.0
+  emoji_regex: ^0.0.3
+  archive: ^3.0.0
+  proper_filesize: ^1.0.0
+  unorm_dart: ^0.2.0
+  win32: 4.1.4
+  ffi: ^1.2.0
+  coordinate_converter: ^1.0.0
   
   # Flutter GUI dependencies
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
-  material_color_utilities: ^0.11.1
-  file_picker: ^8.1.2
-  flutter_riverpod: ^2.6.1
-  go_router: ^14.6.1
-  percent_indicator: ^4.2.1
-  animations: ^2.0.11
+  cupertino_icons: ^1.0.0
+  material_color_utilities: ^0.5.0
+  file_picker: ^5.0.0
+  flutter_riverpod: ^2.0.0
+  go_router: ^10.0.0
+  percent_indicator: ^4.0.0
+  animations: ^2.0.0
 
 dev_dependencies:
-  lints: ^5.0.0
-  test: ^1.25.15
+  lints: ^2.0.0
+  test: ^1.20.0
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^2.0.0
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/images/
-  fonts:
-    - family: Roboto
-      fonts:
-        - asset: fonts/Roboto-Regular.ttf
-        - asset: fonts/Roboto-Bold.ttf
-          weight: 700
