@@ -435,8 +435,13 @@ Space Efficiency: {estimates['space_multiplier']:.1f}x
                 
                 status = gpth.check_exiftool_status()
                 
-                if status['available']:
-                    message = f"✓ ExifTool is available\nVersion: {status['version']}\nPath: {status['path']}"
+                # Handle both 'is_available' and 'available' keys for compatibility
+                is_available = status.get('is_available', status.get('available', False))
+                
+                if is_available:
+                    version = status.get('version', 'Unknown')
+                    path = status.get('path', 'System PATH')
+                    message = f"✓ ExifTool is available\nVersion: {version}\nPath: {path}"
                     self.update_status("ExifTool check completed - Available")
                     messagebox.showinfo("ExifTool Status", message)
                 else:

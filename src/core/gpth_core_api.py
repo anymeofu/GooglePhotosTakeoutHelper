@@ -592,7 +592,7 @@ class GooglePhotosTakeoutHelper:
                 }
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return {
-                'available': False,
+                'is_available': False,
                 'version': None,
                 'path': None,
                 'message': 'ExifTool not found. Some features may be limited.'
@@ -600,7 +600,7 @@ class GooglePhotosTakeoutHelper:
     
     def validate_takeout_structure(self) -> bool:
         """Validate that the input path contains a valid Google Photos Takeout structure"""
-        result = self.check_takeout_structure(self.config.input_path)
+        result = self.validate_takeout_structure(self.config.input_path)
         return result['is_valid']
     
     def estimate_space_requirements(self) -> Dict[str, Any]:
@@ -693,3 +693,186 @@ class GooglePhotosTakeoutHelper:
                         
             except Exception as e:
                 self.logger.warning(f"Could not update timestamp for {file_path}: {e}")
+    
+    def validate_takeout_structure(self) -> bool:
+        """
+        Validate that the input contains a valid Google Photos takeout structure
+        
+        Returns:
+            True if structure is valid, False otherwise
+        """
+        try:
+            input_path = Path(self.config.input_path)
+            if not input_path.exists():
+                self.logger.error(f"Input path does not exist: {input_path}")
+                return False
+                
+            if not input_path.is_dir():
+                self.logger.error(f"Input path is not a directory: {input_path}")
+                return False
+            
+            # Check if we have any media files
+            media_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.heic', '.raw', '.mp4', '.mov', '.avi'}
+            media_found = False
+            
+            for file_path in input_path.rglob('*'):
+                if file_path.is_file() and file_path.suffix.lower() in media_extensions:
+                    media_found = True
+                    break
+            
+            if not media_found:
+                self.logger.warning("No media files found in input directory")
+                return False
+            
+            # Look for typical Google Photos takeout structure indicators
+            has_photos_folder = False
+            has_json_metadata = False
+            
+            for item in input_path.iterdir():
+                if item.is_dir() and 'Photos from' in item.name:
+                    has_photos_folder = True
+                    break
+            
+            # Check for JSON metadata files
+            json_files = list(input_path.rglob('*.json'))
+            if json_files:
+                has_json_metadata = True
+            
+            if has_photos_folder or has_json_metadata:
+                self.logger.info("Valid Google Photos takeout structure detected")
+                return True
+            else:
+                self.logger.warning("Input appears to be a regular photo folder rather than Google Photos takeout")
+                # Still allow processing but warn user
+                return True
+                
+        except Exception as e:
+            self.logger.error(f"Error validating takeout structure: {e}")
+            return False
+    
+    def estimate_space_requirements(self) -> Dict[str, Any]:
+        """
+        Estimate storage space requirements for processing
+        
+        Returns:
+            Dictionary with space estimates and warnings
+        """
+        try:
+            input_path = Path(self.config.input_path)
+            output_path = Path(self.config.output_path)
+            
+            # Calculate input directory size
+            input_size = 0
+            file_count = 0
+            
+            for file_path in input_path.rglob('*'):
+                if file_path.is_file():
+                    try:
+                        input_size += file_path.stat().st_size
+                        file_count += 1
+                    except (OSError, PermissionError):
+                        continue
+            
+            input_size_gb = input_size / (1024**3)
+            
+            # Calculate space multiplier based on album mode
+            space_multiplier = 1.0
+            if self.config.album_mode == AlbumMode.DUPLICATE_COPY:
+                space_multiplier = 2.0  # Duplicate files for album organization
+            elif self.config.album_mode == AlbumMode.SHORTCUT:
+                space_multiplier = 1.1  # Some overhead for shortcuts
+            else:
+                space_multiplier = 1.2  # General overhead
+            
+            estimated_output_size = input_size * space_multiplier
+            estimated_output_gb = estimated_output_size / (1024**3)
+            
+            # Check available space on output drive
+            try:
+                if output_path.parent.exists():
+                    stat = shutil.disk_usage(output_path.parent)
+                    available_space = stat.free
+                else:
+                    # Try to create parent directory to check space
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    stat = shutil.disk_usage(output_path.parent)
+                    available_space = stat.free
+                    
+                available_space_gb = available_space / (1024**3)
+            except Exception:
+                available_space_gb = float('inf')  # Unknown space
+            
+            # Generate warnings
+            warning = None
+            if available_space_gb != float('inf') and estimated_output_gb > available_space_gb:
+                warning = f"⚠️ Insufficient space! Need {estimated_output_gb:.2f}GB but only {available_space_gb:.2f}GB available"
+            elif available_space_gb != float('inf') and estimated_output_gb > available_space_gb * 0.9:
+                warning = f"⚠️ Low space warning! Output may use {estimated_output_gb:.2f}GB of {available_space_gb:.2f}GB available"
+            
+            return {
+                'input_size_gb': input_size_gb,
+                'output_size_gb': estimated_output_gb,
+                'available_space_gb': available_space_gb,
+                'space_multiplier': space_multiplier,
+                'file_count': file_count,
+                'warning': warning
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error estimating space requirements: {e}")
+            return {
+                'input_size_gb': 0.0,
+                'output_size_gb': 0.0,
+                'available_space_gb': 0.0,
+                'space_multiplier': 1.0,
+                'file_count': 0,
+                'warning': f"Could not estimate space: {e}"
+            }
+    
+    def check_exiftool_status(self) -> Dict[str, Any]:
+        """
+        Check ExifTool installation status
+        
+        Returns:
+            Dictionary with availability and version information
+        """
+        try:
+            from ..services.exif_writer import check_exiftool_status
+            return check_exiftool_status()
+        except ImportError:
+            # Fallback implementation
+            import subprocess
+            try:
+                result = subprocess.run(['exiftool', '-ver'],
+                                      capture_output=True,
+                                      text=True,
+                                      timeout=10)
+                if result.returncode == 0:
+                    version = result.stdout.strip()
+                    return {
+                        'is_available': True,
+                        'version': version,
+                        'path': 'exiftool (system PATH)'
+                    }
+                else:
+                    return {
+                        'is_available': False,
+                        'version': None,
+                        'path': None,
+                        'error': 'ExifTool not found in system PATH'
+                    }
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError) as e:
+                return {
+                    'is_available': False,
+                    'version': None,
+                    'path': None,
+                    'error': str(e)
+                }
+        except Exception as e:
+            self.logger.error(f"Error checking ExifTool status: {e}")
+            return {
+                'is_available': False,
+                'version': None,
+                'path': None,
+                'error': str(e)
+            }
