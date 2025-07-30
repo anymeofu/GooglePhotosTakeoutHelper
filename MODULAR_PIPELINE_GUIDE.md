@@ -2,7 +2,7 @@
 
 ## Overview
 
-The modular pipeline system allows you to execute Google Photos processing steps individually or in ranges, with full state persistence and resume capability. This provides better control, debugging, and reproducibility for large processing tasks.
+The modular pipeline system allows you to execute Google Photos processing steps individually or in ranges, with full state persistence and resume capability. **Phase 2 Enhanced Services** add ZIP processing, smart validation, space management, enhanced interactive mode, and advanced progress reporting.
 
 ## Key Features
 
@@ -12,6 +12,11 @@ The modular pipeline system allows you to execute Google Photos processing steps
 - **CLI Interface**: Command-line tools for automation
 - **Dry Run Support**: Test processing without making changes
 - **Progress Tracking**: Detailed status and logging
+- 🆕 **ZIP Processing**: Automatic secure extraction with progress tracking
+- 🆕 **Smart Validation**: Input structure validation with user guidance
+- 🆕 **Space Management**: Intelligent disk space checking and recommendations
+- 🆕 **Enhanced Interactive Mode**: Complete wizard with 15+ configuration options
+- 🆕 **Advanced Progress Reporting**: Real-time progress with ETAs and metrics
 
 ## Pipeline Steps
 
@@ -25,6 +30,43 @@ The processing pipeline consists of 8 distinct steps:
 6. **Find Albums** - Discover album structure from JSON files
 7. **Move Files** - Organize files into output structure
 8. **Update Timestamps** - Set file system timestamps
+
+## 🆕 Phase 2: Enhanced Services
+
+### ZIP Extraction Service (`src/services/zip_extraction_service.py`)
+- **Security**: Zip Slip attack prevention with path traversal validation
+- **Performance**: Memory-efficient streaming for large files (>10GB)
+- **Cross-Platform**: Windows filename sanitization and Unicode support
+- **Progress**: Real-time extraction progress with file counts and sizes
+- **Validation**: Pre-extraction ZIP file integrity checking
+
+### Takeout Validator Service (`src/services/takeout_validator_service.py`)
+- **Smart Detection**: Automatic Takeout folder recognition
+- **Structure Analysis**: Year folder validation ("Photos from YYYY" pattern)
+- **Content Analysis**: Media file counting and size estimation
+- **User Guidance**: Detailed validation reports with recommendations
+- **Path Optimization**: Suggests optimal input paths for processing
+
+### Disk Space Service (`src/services/disk_space_service.py`)
+- **Cross-Platform**: Windows (PowerShell/WMI), macOS/Linux (df), Python fallbacks
+- **Album Calculations**: Space multipliers (shortcut=1.1x, duplicate-copy=2.0x)
+- **Safety Margins**: 100MB default, 1GB for >10GB datasets
+- **Smart Recommendations**: Platform-specific cleanup suggestions
+- **Real-time Validation**: Pre-processing space requirement checks
+
+### Enhanced Interactive Service (`src/services/enhanced_interactive_service.py`)
+- **Complete Wizard**: 15+ configuration options covering all features
+- **Data Source Selection**: ZIP vs folder with automatic extraction
+- **Integrated Validation**: Built-in structure and space checking
+- **Step-by-Step Guidance**: User-friendly interface with explanations
+- **Configuration Summary**: Final review before processing
+
+### Progress Reporting Service (`src/services/progress_reporting_service.py`)
+- **Multi-Step Coordination**: Overall and per-step progress tracking
+- **Real-Time Updates**: Progress bars with ETAs and throughput calculations
+- **Multiple Formats**: Console output, tqdm bars, callback system
+- **Performance Metrics**: Detailed timing and processing statistics
+- **Nested Progress**: Sub-operation tracking (e.g., ZIP extraction)
 
 ## Quick Start
 

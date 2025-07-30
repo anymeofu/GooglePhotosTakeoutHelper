@@ -1,6 +1,6 @@
 # 🐍 Google Photos Takeout Helper - Python Edition
 
-A **production-ready modular Python implementation** of the Google Photos Takeout Helper with advanced crash recovery, step-by-step execution, and comprehensive state management.
+A **production-ready modular Python implementation** of the Google Photos Takeout Helper with advanced crash recovery, step-by-step execution, comprehensive state management, and **Phase 2 enhanced services**.
 
 ## 🌟 Why This Python Version?
 
@@ -10,6 +10,11 @@ A **production-ready modular Python implementation** of the Google Photos Takeou
 - ✅ **State Persistence**: Human-readable JSON state management
 - ✅ **Production Ready**: Process monitoring, cleanup, and graceful shutdown
 - ✅ **Cross-Platform**: Works seamlessly on Windows, macOS, and Linux
+- 🆕 **ZIP Processing**: Secure automatic ZIP extraction with progress tracking
+- 🆕 **Smart Validation**: Input structure validation with user guidance
+- 🆕 **Space Management**: Intelligent disk space checking and recommendations
+- 🆕 **Enhanced Interactive Mode**: Complete wizard with 15+ configuration options
+- 🆕 **Advanced Progress Reporting**: Real-time progress with ETAs and detailed metrics
 
 ## 🚀 Quick Start
 
@@ -27,13 +32,48 @@ cd GooglePhotosTakeoutHelper
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Run the modular pipeline
+# 3. Run with enhanced interactive mode
+python gpth_cli.py interactive
+
+# 4. Or run the modular pipeline directly
 python gpth_cli.py run /path/to/takeout /path/to/output --verbose
 
-# 4. Or run individual steps
+# 5. Or run individual steps
 python gpth_cli.py step discover-media <run-id>
 python gpth_cli.py step remove-duplicates <run-id>
 ```
+
+## 🆕 Phase 2: Enhanced Services (NEW)
+
+### 🗜️ Automatic ZIP Processing
+- **Secure Extraction**: Zip Slip attack prevention with path validation
+- **Memory Efficient**: Streaming extraction for large files (>10GB)
+- **Progress Tracking**: Real-time extraction progress with file counts
+- **Cross-Platform**: Windows filename sanitization and Unicode support
+
+### 🔍 Smart Input Validation
+- **Structure Detection**: Automatic Takeout folder recognition
+- **Content Analysis**: Media file counting and size estimation
+- **User Guidance**: Detailed validation reports with recommendations
+- **Path Optimization**: Suggests best input paths for processing
+
+### 💾 Intelligent Space Management
+- **Cross-Platform Checking**: Windows/macOS/Linux disk space detection
+- **Album Behavior Calculations**: Space multipliers (shortcut=1.1x, duplicate-copy=2.0x)
+- **Safety Margins**: Prevents mid-processing space failures
+- **Smart Recommendations**: Platform-specific cleanup suggestions
+
+### 🎯 Enhanced Interactive Mode
+- **15+ Configuration Options**: Complete wizard covering all features
+- **Data Source Selection**: ZIP vs folder with automatic extraction
+- **Integrated Validation**: Built-in structure and space checking
+- **Step-by-Step Guidance**: User-friendly interface with explanations
+
+### 📊 Advanced Progress Reporting
+- **Multi-Step Coordination**: Overall and per-step progress tracking
+- **Real-Time Updates**: Progress bars with ETAs and throughput
+- **Multiple Formats**: Console, tqdm bars, callback system
+- **Performance Metrics**: Detailed timing and processing statistics
 
 ## 🏗️ Modular Pipeline Architecture
 
