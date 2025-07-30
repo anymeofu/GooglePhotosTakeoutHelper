@@ -74,9 +74,9 @@ Examples:
         run_parser = subparsers.add_parser('run', help='Start new pipeline execution')
         run_parser.add_argument('input_dir', type=str, help='Input directory (Google Takeout folder)')
         run_parser.add_argument('output_dir', type=str, help='Output directory')
-        run_parser.add_argument('--album-mode', choices=['shortcut', 'duplicate-copy', 'reverse-shortcut', 'json', 'nothing'], 
+        run_parser.add_argument('--album-mode', choices=['shortcut', 'duplicate-copy', 'reverse-shortcut', 'json', 'nothing'],
                                default='shortcut', help='Album handling mode')
-        run_parser.add_argument('--extension-fix', choices=['none', 'standard', 'conservative', 'solo'], 
+        run_parser.add_argument('--extension-fix', choices=['none', 'standard', 'conservative', 'solo'],
                                default='standard', help='Extension fixing mode')
         run_parser.add_argument('--skip-extras', action='store_true', default=True, help='Skip extra files')
         run_parser.add_argument('--dry-run', action='store_true', help='Simulate without making changes')
@@ -84,6 +84,16 @@ Examples:
         run_parser.add_argument('--verbose', action='store_true', help='Verbose output')
         run_parser.add_argument('--write-exif', action='store_true', default=True, help='Write EXIF data')
         run_parser.add_argument('--update-creation-time', action='store_true', help='Update file creation times')
+        
+        # Additional GUI options
+        run_parser.add_argument('--date-division', type=int, default=0, help='Date-based folder division (0=off, 1=year, 2=month)')
+        run_parser.add_argument('--partner-shared', action='store_true', help='Handle partner shared photos specially')
+        run_parser.add_argument('--no-write-exif', action='store_true', help='Disable EXIF writing')
+        run_parser.add_argument('--transform-pixel-mp', action='store_true', help='Transform Pixel motion photos')
+        run_parser.add_argument('--no-guess-from-name', action='store_true', help='Disable date guessing from filenames')
+        run_parser.add_argument('--limit-filesize', action='store_true', help='Limit processing to smaller files')
+        run_parser.add_argument('--fix-mode', action='store_true', help='Enable fix mode for corrections')
+        run_parser.add_argument('--quick', action='store_true', help='Quick mode - skip timestamp updates')
         
         # Execute single step
         step_parser = subparsers.add_parser('step', help='Execute single step')
@@ -129,17 +139,26 @@ Examples:
     
     def _create_config(self, args) -> ProcessingConfig:
         """Create ProcessingConfig from CLI arguments"""
+        # Handle write_exif logic (default True unless --no-write-exif)
+        write_exif = getattr(args, 'write_exif', True) and not getattr(args, 'no_write_exif', False)
+        
         return ProcessingConfig(
             input_path=args.input_dir,
             output_path=args.output_dir,
             album_mode=AlbumMode(args.album_mode),
             extension_fix_mode=ExtensionFixMode(args.extension_fix),
-            skip_extras=args.skip_extras,
-            dry_run=args.dry_run,
-            max_threads=args.max_threads,
-            verbose=args.verbose,
-            write_exif=args.write_exif,
-            update_creation_time=args.update_creation_time
+            skip_extras=getattr(args, 'skip_extras', True),
+            dry_run=getattr(args, 'dry_run', False),
+            max_threads=getattr(args, 'max_threads', 4),
+            verbose=getattr(args, 'verbose', False),
+            write_exif=write_exif,
+            update_creation_time=getattr(args, 'update_creation_time', False),
+            date_division=getattr(args, 'date_division', 0),
+            divide_partner_shared=getattr(args, 'partner_shared', False),
+            transform_pixel_mp=getattr(args, 'transform_pixel_mp', False),
+            guess_from_name=not getattr(args, 'no_guess_from_name', False),
+            limit_filesize=getattr(args, 'limit_filesize', False),
+            fix_mode=getattr(args, 'fix_mode', False)
         )
     
     def _create_pipeline_from_run(self, run_id: str) -> ModularPipeline:
@@ -549,6 +568,50 @@ Examples:
             return 1
         
         return handler(args)
+
+
+def execute_full_pipeline(input_dir: str, output_dir: str, **options) -> int:
+    """Execute full pipeline with options - used by main CLI"""
+    try:
+        # Create a mock args object with the options
+        class Args:
+            def __init__(self, input_dir, output_dir, **kwargs):
+                self.input_dir = input_dir
+                self.output_dir = output_dir
+                self.command = 'run'
+                
+                # Set defaults and apply options
+                defaults = {
+                    'album_mode': 'shortcut',
+                    'extension_fix': 'standard',
+                    'skip_extras': True,
+                    'dry_run': False,
+                    'max_threads': 4,
+                    'verbose': False,
+                    'write_exif': True,
+                    'update_creation_time': False,
+                    'date_division': 0,
+                    'partner_shared': False,
+                    'no_write_exif': False,
+                    'transform_pixel_mp': False,
+                    'no_guess_from_name': False,
+                    'limit_filesize': False,
+                    'fix_mode': False,
+                    'quick': False
+                }
+                
+                for key, default in defaults.items():
+                    setattr(self, key, kwargs.get(key, default))
+        
+        args = Args(input_dir, output_dir, **options)
+        
+        # Create and run CLI
+        cli = ModularCLI()
+        return cli.run_command(args)
+        
+    except Exception as e:
+        print(f"Pipeline execution failed: {e}")
+        return 1
 
 
 def main():

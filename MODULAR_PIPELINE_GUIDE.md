@@ -28,13 +28,20 @@ The processing pipeline consists of 8 distinct steps:
 
 ## Quick Start
 
-### 1. Run Full Pipeline
+### 1. Interactive Mode (Beginner-Friendly)
+
+```bash
+# Start interactive mode with guided prompts
+python gpth_cli.py
+```
+
+### 2. Run Full Pipeline
 
 ```bash
 python gpth_cli.py run input_dir output_dir --verbose
 ```
 
-### 2. Execute Individual Steps
+### 3. Execute Individual Steps
 
 ```bash
 # Start a pipeline (gets run ID)
@@ -45,40 +52,51 @@ python gpth_cli.py step discover-media <run-id>
 python gpth_cli.py step extract-dates <run-id>
 ```
 
-### 3. Pause/Resume Operations
+### 4. Pause/Resume Operations
 
 ```bash
 # Pause a running pipeline
 python gpth_cli.py pause <run-id>
 
-# Resume a paused pipeline
-python gpth_cli.py resume <run-id>
+# Resume/continue a paused pipeline
+python gpth_cli.py continue <run-id>
 
 # Resume from specific step
-python gpth_cli.py resume <run-id> --from-step 4
+python gpth_cli.py continue <run-id> --from-step 4
 ```
 
-### 4. Crash Recovery & Cleanup
+### 5. Crash Recovery & Cleanup
 
 ```bash
 # Clean up orphaned runs (crashed processes)
-python gpth_cli.py cleanup
-
-# Auto-cleanup without confirmation
-python gpth_cli.py cleanup --auto
+python gpth_cli.py clean
 ```
 
-### 5. Check Status
+### 6. Check Status
 
 ```bash
 # List all pipeline runs
 python gpth_cli.py list
 
-# Check detailed status
-python gpth_cli.py status <run-id> --verbose
+# List with detailed information
+python gpth_cli.py list --detailed
+```
+
+### 7. Quick Processing (Legacy Support)
+
+```bash
+# Use original non-modular pipeline
+python gpth_cli.py process input_dir output_dir --quick
 ```
 
 ## CLI Commands
+
+### Interactive Mode
+
+```bash
+python gpth_cli.py
+# Starts beginner-friendly interactive mode with guided prompts
+```
 
 ### `run` - Start Full Pipeline
 
@@ -86,9 +104,23 @@ python gpth_cli.py status <run-id> --verbose
 python gpth_cli.py run INPUT_DIR OUTPUT_DIR [OPTIONS]
 ```
 
-Options:
-- `--dry-run`: Simulate without making changes
+**Options:**
+- `--dry-run`: Test without making changes
+- `--album-mode {shortcut,duplicate-copy,nothing}`: Album handling strategy
+- `--quick`: Skip timestamp updates for faster processing
 - `--verbose`: Enable detailed logging
+
+**Examples:**
+```bash
+# Basic run with verbose output
+python gpth_cli.py run "E:\GPhotos\2023" "D:\Organized" --verbose
+
+# Test run without changes
+python gpth_cli.py run input_dir output_dir --dry-run --album-mode duplicate-copy
+
+# Quick processing (skip timestamps)
+python gpth_cli.py run input_dir output_dir --quick
+```
 
 ### `step` - Execute Single Step
 
@@ -96,20 +128,45 @@ Options:
 python gpth_cli.py step STEP_NAME RUN_ID
 ```
 
-Available steps:
-- `fix-extensions`
-- `discover-media`
-- `remove-duplicates`
-- `extract-dates`
-- `write-exif`
-- `find-albums`
-- `move-files`
-- `update-timestamps`
+**Available steps:**
+- `fix-extensions` - Correct file extensions based on content
+- `discover-media` - Find and catalog all media files
+- `remove-duplicates` - Identify and handle duplicate files
+- `extract-dates` - Parse creation dates from metadata
+- `write-exif` - Update EXIF data with correct timestamps
+- `find-albums` - Discover album structure from JSON files
+- `move-files` - Organize files into output structure
+- `update-timestamps` - Set file system timestamps
 
-### `status` - Check Pipeline Status
+**Examples:**
+```bash
+python gpth_cli.py step discover-media 20250730_143022
+python gpth_cli.py step find-albums 20250730_143022
+```
+
+### `continue` - Resume Pipeline
 
 ```bash
-python gpth_cli.py status RUN_ID [--verbose]
+# Resume from last incomplete step
+python gpth_cli.py continue [RUN_ID]
+
+# Resume from specific step
+python gpth_cli.py continue RUN_ID --from-step STEP_NUMBER
+```
+
+**Options:**
+- `--from-step FROM_STEP`: Start from specific step number (1-8)
+
+**Examples:**
+```bash
+# Resume latest run
+python gpth_cli.py continue
+
+# Resume specific run
+python gpth_cli.py continue 20250730_143022
+
+# Resume from step 4 (Extract Dates)
+python gpth_cli.py continue 20250730_143022 --from-step 4
 ```
 
 ### `pause` - Pause Running Pipeline
@@ -118,31 +175,47 @@ python gpth_cli.py status RUN_ID [--verbose]
 python gpth_cli.py pause RUN_ID
 ```
 
-### `resume` - Resume Pipeline
-
+**Example:**
 ```bash
-# Resume paused pipeline
-python gpth_cli.py resume RUN_ID
-
-# Resume from specific step
-python gpth_cli.py resume RUN_ID --from-step STEP_NUMBER
-```
-
-### `cleanup` - Clean Up Crashed Runs
-
-```bash
-# Interactive cleanup
-python gpth_cli.py cleanup
-
-# Automatic cleanup
-python gpth_cli.py cleanup --auto
+python gpth_cli.py pause 20250730_143022
 ```
 
 ### `list` - List Pipeline Runs
 
 ```bash
-python gpth_cli.py list
+python gpth_cli.py list [--detailed]
 ```
+
+**Options:**
+- `--detailed`: Show detailed progress information
+
+**Examples:**
+```bash
+# Basic list
+python gpth_cli.py list
+
+# Detailed view with step progress
+python gpth_cli.py list --detailed
+```
+
+### `clean` - Clean Up Orphaned Runs
+
+```bash
+python gpth_cli.py clean
+```
+
+Cleans up pipeline runs that crashed or were terminated unexpectedly.
+
+### `process` - Quick Processing (Legacy)
+
+```bash
+python gpth_cli.py process INPUT_DIR OUTPUT_DIR [--quick]
+```
+
+**Options:**
+- `--quick`: Use faster, non-modular processing
+
+Uses the original non-modular pipeline for faster processing without state persistence.
 
 ## Crash Recovery & Resilience
 
@@ -372,16 +445,29 @@ cp -r pipeline_states/ pipeline_states_backup/
 ### Common Issues
 
 1. **Step fails with "Pipeline run not found"**
-   - Check run ID with `python gpth_cli.py list`
+   - Check run ID with `python gpth_cli.py list --detailed`
    - Ensure `pipeline_states/` directory exists
+   - Verify the run ID format (e.g., `20250730_143022`)
 
 2. **"Invalid step number" error**
    - Verify step name spelling
-   - Use `python gpth_cli.py step --help` for valid options
+   - Use `python gpth_cli.py step --help` for valid step names:
+     `fix-extensions`, `discover-media`, `remove-duplicates`, `extract-dates`,
+     `write-exif`, `find-albums`, `move-files`, `update-timestamps`
 
 3. **Permission errors**
    - Check write permissions for output directory
    - Verify input directory read permissions
+   - Ensure adequate disk space
+
+4. **Albums not being processed/moved**
+   - **Fixed in latest version**: State persistence bug was causing `media_files` to not flow between steps
+   - Verify album mode: `--album-mode duplicate-copy` for album organization
+   - Check step 6 (find-albums) completed successfully with `python gpth_cli.py list --detailed`
+
+5. **Process shows "running" but appears stuck**
+   - Use `python gpth_cli.py clean` to recover orphaned processes
+   - Check system resources (CPU, memory, disk I/O)
 
 ### Debug Mode
 
@@ -436,14 +522,40 @@ To upgrade from the original monolithic pipeline:
 
 1. **Test with dry run**:
    ```bash
-   python gpth_cli.py run input_dir output_dir --dry-run
+   python gpth_cli.py run input_dir output_dir --dry-run --verbose
    ```
 
 2. **Run modular pipeline**:
    ```bash
-   python gpth_cli.py run input_dir output_dir
+   python gpth_cli.py run input_dir output_dir --album-mode duplicate-copy
    ```
 
-3. **Compare results** with your previous output
+3. **Use legacy mode if needed**:
+   ```bash
+   python gpth_cli.py process input_dir output_dir --quick
+   ```
+
+4. **Compare results** with your previous output
 
 The modular system is designed to be fully compatible with existing workflows while providing enhanced control and reliability.
+
+## Recent Updates
+
+**Version 2.0 (January 2025)**:
+- **🐛 Fixed Critical Bug**: State persistence between pipeline steps now works correctly
+- **📁 Albums Processing**: Album detection and organization now functions properly
+- **🎯 Enhanced CLI**: Added interactive mode for beginners with guided prompts
+- **📚 Improved Documentation**: Complete command reference with all flags and examples
+- **⚡ Better Error Handling**: More descriptive error messages and recovery options
+- **🔄 Dual Mode System**: Interactive mode for beginners, modular mode for power users
+- **🛡️ Crash Recovery**: Improved process monitoring and orphan cleanup
+
+**Key Fixes**:
+- Media files now properly persist between pipeline steps
+- Album mappings are correctly saved and restored
+- Date extraction results are preserved for subsequent steps
+
+**Migration Notes**:
+- All existing state files remain compatible
+- New runs benefit from improved state persistence automatically
+- Legacy `process` command still available for quick processing

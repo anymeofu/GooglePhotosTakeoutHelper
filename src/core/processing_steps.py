@@ -144,7 +144,8 @@ class DiscoverMediaStep(ProcessingStep):
                 data={
                     'files_found': len(media_files),
                     'json_files_found': len(json_files),
-                    'extras_skipped': context.config.skip_extras
+                    'extras_skipped': context.config.skip_extras,
+                    'media_files': [str(f) for f in media_files]  # Save file paths for next steps
                 }
             )
             
@@ -316,7 +317,8 @@ class ExtractDatesStep(ProcessingStep):
                 data={
                     'dates_extracted': successful,
                     'dates_failed': failed,
-                    'extraction_method_stats': extraction_stats
+                    'extraction_method_stats': extraction_stats,
+                    'file_dates': {str(k): v.isoformat() if v else None for k, v in file_dates.items()}  # Save dates for next steps
                 }
             )
             
@@ -445,7 +447,8 @@ class FindAlbumsStep(ProcessingStep):
                 message=f"Found {len(albums)} albums",
                 data={
                     'albums_found': len(albums),
-                    'album_names': list(albums.keys())
+                    'album_names': list(albums.keys()),
+                    'albums': {name: [str(f) for f in files] for name, files in albums.items()}  # Save album mappings for next steps
                 }
             )
             

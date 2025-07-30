@@ -73,8 +73,29 @@ This comprehensive guide covers:
 
 ### Core Operations
 ```bash
-# Start a new pipeline run
-gpth run input_dir output_dir [--verbose]
+# Start a new pipeline run with basic options
+gpth run input_dir output_dir [--verbose] [--dry-run]
+
+# Full pipeline with all options
+gpth run input_dir output_dir \
+  --album-mode shortcut \
+  --date-division 2 \
+  --extension-fix standard \
+  --max-threads 4 \
+  --partner-shared \
+  --skip-extras \
+  --no-write-exif \
+  --transform-pixel-mp \
+  --no-guess-from-name \
+  --update-creation-time \
+  --limit-filesize \
+  --fix-mode \
+  --quick \
+  --verbose \
+  --dry-run
+
+# Interactive mode (comprehensive GUI-like experience)
+gpth interactive
 
 # Execute individual steps
 gpth step <step-name> <run-id>
@@ -89,6 +110,36 @@ gpth resume <run-id> [--from-step N]
 
 # Recovery operations
 gpth cleanup [--auto]
+```
+
+### New CLI Arguments (Full GUI Parity)
+```bash
+# Album Processing
+--album-mode [shortcut|duplicate-copy|reverse-shortcut|json|nothing]
+
+# File Organization
+--date-division [0|1|2|3]  # 0=single, 1=year, 2=month, 3=day folders
+
+# Extension Handling
+--extension-fix [none|standard|conservative|solo]
+
+# Advanced Options
+--partner-shared           # Handle partner shared photos specially
+--skip-extras             # Skip extra files (default: true)
+--no-write-exif          # Disable EXIF writing
+--transform-pixel-mp     # Transform Pixel motion photos
+--no-guess-from-name     # Disable date guessing from filenames
+--update-creation-time   # Update file creation times
+--limit-filesize         # Limit processing to smaller files
+--fix-mode              # Enable fix mode for corrections
+
+# Performance
+--max-threads N         # Maximum worker threads (default: 4)
+--quick                # Quick mode - skip timestamp updates
+
+# Control
+--dry-run              # Simulate without making changes
+--verbose              # Verbose output
 ```
 
 ### Available Steps
