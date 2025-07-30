@@ -83,7 +83,13 @@ class GPTHGui:
         
         self.estimate_btn = ttk.Button(button_frame, text="Estimate Space", command=self.estimate_space)
         self.estimate_btn.pack(side=tk.LEFT, padx=(0, 10))
-        
+
+        self.help_btn = ttk.Button(button_frame, text="❓ Help", command=self.show_help)
+        self.help_btn.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.system_btn = ttk.Button(button_frame, text="🔧 System Info", command=self.check_system_info)
+        self.system_btn.pack(side=tk.LEFT, padx=(0, 10))
+
         self.process_btn = ttk.Button(button_frame, text="Start Processing", command=self.start_processing)
         self.process_btn.pack(side=tk.RIGHT, padx=(10, 0))
         
@@ -574,6 +580,94 @@ The tool will still work without ExifTool but with limited EXIF writing capabili
             self.process_btn.config(state=tk.NORMAL)
             self.cancel_btn.config(state=tk.DISABLED)
             self.update_status("Processing cancelled")
+
+    def show_help(self):
+        """Show comprehensive help information"""
+        help_text = """🎯 How to use Google Photos Takeout Helper:
+
+1️⃣ GET YOUR GOOGLE PHOTOS DATA:
+   • Go to Google Takeout (takeout.google.com)
+   • Select 'Photos' and download your archive
+   • You'll get ZIP file(s) or can extract to a folder
+
+2️⃣ SELECT INPUT:
+   • Choose the folder you extracted OR
+   • Select the ZIP files you downloaded
+
+3️⃣ SELECT OUTPUT:
+   • Choose an empty folder where organized photos will go
+   • Don't use the same folder as input!
+
+4️⃣ CHOOSE ORGANIZATION:
+   • Date: How to organize by date (year/month folders)
+   • Albums: How to handle your photo albums
+
+5️⃣ PROCESSING OPTIONS:
+   • Start with "Dry Run" to preview changes
+   • Enable EXIF writing for location/date info
+   • Keep other settings as default for best results
+
+6️⃣ START PROCESSING:
+   • Click "Validate Input" to check everything
+   • Click "Start Processing" to begin organizing
+
+❓ TIPS:
+   • Always do a dry run first to see what will happen
+   • Make sure you have enough disk space
+   • Processing can take a while for large photo collections
+   • Your original photos in Takeout won't be changed
+"""
+        # Create help window
+        help_window = tk.Toplevel(self.root)
+        help_window.title("Help - How to Use")
+        help_window.geometry("600x500")
+        help_window.resizable(True, True)
+        # Create scrollable text
+        text_frame = tk.Frame(help_window)
+        text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        text_widget = tk.Text(text_frame, wrap=tk.WORD, font=("Arial", 9))
+        help_scrollbar = ttk.Scrollbar(text_frame, command=text_widget.yview)
+        text_widget.configure(yscrollcommand=help_scrollbar.set)
+        text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        help_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        text_widget.insert("1.0", help_text)
+        text_widget.configure(state="disabled")
+
+    def check_system_info(self):
+        """Enhanced system information check"""
+        import platform
+        python_version = platform.python_version()
+        system = f"{platform.system()} {platform.release()}"
+        # Check dependencies
+        deps = []
+        try:
+            from PIL import Image
+            deps.append("✅ Pillow (image processing)")
+        except ImportError:
+            deps.append("❌ Pillow (recommended: pip install Pillow)")
+        try:
+            import json
+            deps.append("✅ JSON support")
+        except ImportError:
+            deps.append("❌ JSON support")
+        # Check ExifTool
+        import subprocess
+        try:
+            subprocess.run("exiftool -ver", shell=True, capture_output=True, check=True)
+            deps.append("✅ ExifTool (metadata support)")
+        except:
+            deps.append("⚠️ ExifTool (optional: for better metadata support)")
+        system_info = f"""System Information:
+
+🖥️ Operating System: {system}
+🐍 Python Version: {python_version}
+
+📦 Dependencies:
+{chr(10).join(deps)}
+
+💡 This system should work fine with Google Photos Takeout Helper!
+"""
+        messagebox.showinfo("System Information", system_info)
 
 
 def main():

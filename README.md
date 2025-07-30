@@ -1,291 +1,470 @@
-# 🐍 Google Photos Takeout Helper - Python Edition v3.0.0
+# Google Photos Takeout Helper
 
-A **production-ready modular Python implementation** of the Google Photos Takeout Helper with advanced crash recovery, step-by-step execution, comprehensive state management, **Phase 2 enhanced services**, and **Phase 3 architecture improvements**.
-
-## 🌟 Why This Python Version?
-
-- ✅ **Modular Design**: Run individual pipeline steps or full workflow
-- ✅ **Crash Recovery**: Never lose progress with automatic crash detection
-- ✅ **Pause/Resume**: Full control over long-running operations
-- ✅ **State Persistence**: Human-readable JSON state management
-- ✅ **Production Ready**: Process monitoring, cleanup, and graceful shutdown
-- ✅ **Cross-Platform**: Works seamlessly on Windows, macOS, and Linux
-- 🆕 **ZIP Processing**: Secure automatic ZIP extraction with progress tracking
-- 🆕 **Smart Validation**: Input structure validation with user guidance
-- 🆕 **Space Management**: Intelligent disk space checking and recommendations
-- 🆕 **Enhanced Interactive Mode**: Complete wizard with 15+ configuration options
-- 🆕 **Advanced Progress Reporting**: Real-time progress with ETAs and detailed metrics
-- 🔥 **Phase 3 - Architecture**: Dependency injection, type-safe config, error handling, system optimization
+A comprehensive Python tool for organizing Google Photos Takeout exports into a clean, structured photo library. Automatically handles duplicate detection, date extraction, album organization, and metadata preservation.
 
 ## 🚀 Quick Start
 
+**Most users should start here:**
+```bash
+python gpth_gui.py
+```
+
+## 📋 Table of Contents
+
+- [Installation](#installation)
+- [Available Versions](#available-versions)
+- [Features](#features)
+- [Command Line Reference](#command-line-reference)
+- [Advanced Configuration](#advanced-configuration)
+- [Troubleshooting](#troubleshooting)
+- [System Requirements](#system-requirements)
+- [Deployment](#deployment)
+
+## Installation
+
 ### Prerequisites
-- Python 3.8 or higher
-- ExifTool (recommended for full metadata capabilities)
+- Python 3.7 or higher
+- Windows, macOS, or Linux
 
-### Installation & Usage
+### Setup
+1. **Download or clone this repository**
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **Run the tool:**
+   ```bash
+   python gpth_gui.py
+   ```
 
+## Available Versions
+
+This tool comes in **3 different versions** with clear, descriptive names:
+
+### 1. 🖼️ Enhanced GUI (Best for Most Users)
+**File:** `gpth_gui.py`
 ```bash
-# 1. Clone the repository
-git clone https://github.com/YourRepo/GooglePhotosTakeoutHelper.git
-cd GooglePhotosTakeoutHelper
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Run the new production-ready app (RECOMMENDED)
-python gpth_app.py
-
-# 4. Or system analysis only
-python gpth_app.py --system-check
-
-# 5. Or run the original modular pipeline
-python gpth_cli.py interactive
-python gpth_cli.py run /path/to/takeout /path/to/output --verbose
+python gpth_gui.py
 ```
+**Features:**
+- Clean tabbed interface with all features
+- Built-in help system (❓ Help button)
+- System information checker (🔧 System Info button) 
+- Input validation and space estimation
+- Real-time progress tracking
+- Perfect for beginners and power users alike
 
-## 🆕 Phase 2: Enhanced Services (NEW)
-
-### 🗜️ Automatic ZIP Processing
-- **Secure Extraction**: Zip Slip attack prevention with path validation
-- **Memory Efficient**: Streaming extraction for large files (>10GB)
-- **Progress Tracking**: Real-time extraction progress with file counts
-- **Cross-Platform**: Windows filename sanitization and Unicode support
-
-### 🔍 Smart Input Validation
-- **Structure Detection**: Automatic Takeout folder recognition
-- **Content Analysis**: Media file counting and size estimation
-- **User Guidance**: Detailed validation reports with recommendations
-- **Path Optimization**: Suggests best input paths for processing
-
-### 💾 Intelligent Space Management
-- **Cross-Platform Checking**: Windows/macOS/Linux disk space detection
-- **Album Behavior Calculations**: Space multipliers (shortcut=1.1x, duplicate-copy=2.0x)
-- **Safety Margins**: Prevents mid-processing space failures
-- **Smart Recommendations**: Platform-specific cleanup suggestions
-
-### 🎯 Enhanced Interactive Mode
-- **15+ Configuration Options**: Complete wizard covering all features
-- **Data Source Selection**: ZIP vs folder with automatic extraction
-- **Integrated Validation**: Built-in structure and space checking
-- **Step-by-Step Guidance**: User-friendly interface with explanations
-
-### 📊 Advanced Progress Reporting
-- **Multi-Step Coordination**: Overall and per-step progress tracking
-- **Real-Time Updates**: Progress bars with ETAs and throughput
-- **Multiple Formats**: Console, tqdm bars, callback system
-- **Performance Metrics**: Detailed timing and processing statistics
-
-## 🔥 Phase 3: Enterprise Architecture (NEW)
-
-### 🏗️ Dependency Injection System
-- **Service Container**: Clean IoC container with singleton/transient lifetimes
-- **Automatic Resolution**: Recursive dependency injection with circular detection
-- **Type Safety**: Fully typed service registration and retrieval
-- **Factory Support**: Custom factory functions and lazy initialization
-
-### 📊 Type-Safe Configuration
-- **Strongly Typed**: Replace dictionaries with validated dataclasses
-- **Runtime Validation**: Cross-section dependency validation
-- **Enum-Based Options**: Type-safe album behavior, date organization modes
-- **Legacy Compatibility**: Gradual migration from dictionary-based config
-
-### 🎨 UI/Business Logic Separation
-- **Presenter Pattern**: Clean separation of UI concerns from business logic
-- **Interactive Wizard**: Step-by-step configuration with real-time validation
-- **Console Interface**: Professional colored output with user-friendly prompts
-- **Modular Design**: Testable, maintainable interactive components
-
-### 🛡️ Comprehensive Error Handling
-- **Smart Recovery**: Automatic retry, fallback, skip, and user input strategies
-- **Error Classification**: Hierarchical categorization by severity and type
-- **Context Preservation**: Detailed error context with stack traces
-- **Recovery Management**: Configurable recovery strategies per error category
-
-### ⚡ System Resource Optimization
-- **Real-Time Monitoring**: Cross-platform CPU, memory, disk monitoring
-- **Performance Analysis**: Bottleneck detection and optimization recommendations
-- **Intelligent Settings**: Auto-calculated optimal thread counts and memory limits
-- **Platform-Specific**: Windows/macOS/Linux tailored optimizations
-
-### 🚀 Production-Ready App (`gpth_app.py`)
+### 2. 💻 Interactive CLI (User-Friendly Command Line) 
+**File:** `gpth_interactive.py`
 ```bash
-# Interactive mode with system optimization
-python gpth_app.py
+# Interactive mode (recommended)
+python gpth_interactive.py
 
-# System analysis and recommendations
-python gpth_app.py --system-check
+# With system check
+python gpth_interactive.py --system-check
 
-# Professional output with error recovery
+# Version information
+python gpth_interactive.py --version
 ```
+**Features:**
+- Interactive wizard mode
+- System optimization checks
+- Comprehensive error handling
+- Great for command line users
 
-## 🏗️ Modular Pipeline Architecture
+**Available Flags:**
+- `--version` - Show version information and exit
+- `--system-check` - Run system analysis and optimization check only
+- `--log-level {DEBUG,INFO,WARNING,ERROR}` - Set logging level (default: INFO)
+- `--no-color` - Disable colored output
 
-### 8-Step Processing Workflow
-1. **Fix Extensions** - Content-based file extension correction
-2. **Discover Media** - Media file cataloging with state persistence
-3. **Remove Duplicates** - Intelligent duplicate detection and handling
-4. **Extract Dates** - Metadata and JSON-based date extraction
-5. **Write EXIF** - EXIF data updating with error recovery
-6. **Find Albums** - Album structure discovery from Google JSON
-7. **Move Files** - Atomic file organization with rollback capability
-8. **Update Timestamps** - File system timestamp synchronization
-
-### 🛡️ Production-Ready Features
-
-**Crash-Resistant Pipeline:**
-- ✅ **Never lose progress** - Automatic crash detection prevents "stuck running" status
-- ✅ **Resume anywhere** - Continue from exact step where failure occurred  
-- ✅ **Process monitoring** - Background tracking of pipeline health
-- ✅ **Cleanup commands** - Automatic recovery from system crashes
-- ✅ **Signal handling** - Graceful pause/resume via system signals
-
-## 📖 Complete Documentation
-
-**📋 For detailed usage instructions, examples, and advanced features, see:**
-### **[📖 MODULAR PIPELINE GUIDE](MODULAR_PIPELINE_GUIDE.md)**
-
-This comprehensive guide covers:
-- Complete command reference with examples
-- Step-by-step execution workflows
-- Crash recovery and troubleshooting
-- State management and monitoring
-- Advanced configuration options
-- Production deployment considerations
-
-## 🎛️ Command Reference
-
-### Core Operations
+### 3. 🔧 Modular CLI (Advanced Control)
+**File:** `gpth_modular.py`
 ```bash
-# Start a new pipeline run with basic options
-gpth run input_dir output_dir [--verbose] [--dry-run]
+# Interactive setup
+python gpth_modular.py
 
-# Full pipeline with all options
-gpth run input_dir output_dir \
-  --album-mode shortcut \
-  --date-division 2 \
-  --extension-fix standard \
-  --max-threads 4 \
-  --partner-shared \
-  --skip-extras \
-  --no-write-exif \
-  --transform-pixel-mp \
-  --no-guess-from-name \
-  --update-creation-time \
-  --limit-filesize \
-  --fix-mode \
-  --quick \
-  --verbose \
-  --dry-run
+# Full pipeline processing
+python gpth_modular.py run /path/to/takeout /path/to/output
 
-# Interactive mode (comprehensive GUI-like experience)
-gpth interactive
+# Step-by-step processing
+python gpth_modular.py step discover-media run_12345
 
-# Execute individual steps
-gpth step <step-name> <run-id>
+# Resume from specific step
+python gpth_modular.py continue run_id --from-step 3
 
-# Check pipeline status
-gpth status <run-id> [--verbose]
-gpth list
+# List all pipeline runs
+python gpth_modular.py list --detailed
 
-# Pause/Resume operations
-gpth pause <run-id>
-gpth resume <run-id> [--from-step N]
-
-# Recovery operations
-gpth cleanup [--auto]
+# Cleanup orphaned runs
+python gpth_modular.py clean
 ```
+**Features:**
+- Individual pipeline steps
+- Advanced debugging and resuming
+- Fine control over process
+- For developers/troubleshooting
 
-### New CLI Arguments (Full GUI Parity)
+## Features
+
+### Core Processing
+- **Smart Duplicate Detection** - Identifies and removes duplicate photos/videos
+- **Intelligent Date Extraction** - Extracts dates from EXIF, JSON files, and filenames
+- **Album Organization** - Reconstructs Google Photos albums with multiple strategies
+- **Metadata Preservation** - Writes GPS coordinates and dates to EXIF data
+- **Extension Fixing** - Corrects file extensions based on actual file content
+
+### Organization Options
+- **Date-based Folders** - Organize by year, year/month, or year/month/day
+- **Album Strategies** - Multiple ways to handle Google Photos albums
+- **Partner Sharing** - Separate shared photos from personal photos
+- **Extra File Handling** - Skip or include edited versions and extra files
+
+### Safety & Performance
+- **Dry Run Mode** - Preview changes before applying them
+- **Progress Tracking** - Real-time progress with detailed status
+- **Error Recovery** - Comprehensive error handling with recovery options
+- **System Optimization** - Checks available disk space and system resources
+- **Cross-Platform** - Works on Windows, macOS, and Linux
+
+## Command Line Reference
+
+### Interactive CLI (`gpth_interactive.py`)
+
+Basic usage:
 ```bash
-# Album Processing
---album-mode [shortcut|duplicate-copy|reverse-shortcut|json|nothing]
-
-# File Organization
---date-division [0|1|2|3]  # 0=single, 1=year, 2=month, 3=day folders
-
-# Extension Handling
---extension-fix [none|standard|conservative|solo]
-
-# Advanced Options
---partner-shared           # Handle partner shared photos specially
---skip-extras             # Skip extra files (default: true)
---no-write-exif          # Disable EXIF writing
---transform-pixel-mp     # Transform Pixel motion photos
---no-guess-from-name     # Disable date guessing from filenames
---update-creation-time   # Update file creation times
---limit-filesize         # Limit processing to smaller files
---fix-mode              # Enable fix mode for corrections
-
-# Performance
---max-threads N         # Maximum worker threads (default: 4)
---quick                # Quick mode - skip timestamp updates
-
-# Control
---dry-run              # Simulate without making changes
---verbose              # Verbose output
+python gpth_interactive.py [OPTIONS]
 ```
 
-### Available Steps
-- `fix-extensions` - Fix file extensions based on content
-- `discover-media` - Find and catalog media files
-- `remove-duplicates` - Remove duplicate files
-- `extract-dates` - Extract dates from metadata/JSON
-- `write-exif` - Write EXIF metadata
-- `find-albums` - Discover album structure
-- `move-files` - Organize files into output structure
-- `update-timestamps` - Update file creation times
+**Options:**
+- `--version` - Show version information
+- `--system-check` - Run system analysis only
+- `--log-level {DEBUG,INFO,WARNING,ERROR}` - Set logging verbosity
+- `--no-color` - Disable colored terminal output
 
-## 🔧 System Requirements
+**Examples:**
+```bash
+# Start interactive mode
+python gpth_interactive.py
 
-### Required Dependencies
-- **Python 3.8+**: Core runtime
-- **Pillow**: Image processing and EXIF reading
-- **Standard library**: json, pathlib, subprocess, signal
+# Check system requirements
+python gpth_interactive.py --system-check
 
-### Optional Dependencies
-- **ExifTool**: Professional metadata writing (highly recommended)
-- **python-magic**: Enhanced MIME type detection
-
-### Platform Support
-- **Windows**: PowerShell timestamp services, process monitoring
-- **macOS**: SetFile integration, signal-based pause/resume
-- **Linux**: Enhanced touch commands, full signal handling
-
-## 💾 State Management
-
-The modular pipeline uses JSON-based state persistence:
-
-```
-pipeline_states/
-├── runs/              # Pipeline execution records
-├── steps/             # Individual step state data  
-├── files/             # Media catalogs and file lists
-├── processes/         # Process tracking (PID, status)
-└── runs_index.json    # Quick lookup index
+# Debug mode with verbose logging
+python gpth_interactive.py --log-level DEBUG
 ```
 
-## 🚨 Error Recovery
+### Modular CLI (`gpth_modular.py`)
 
-The system provides comprehensive crash recovery:
+#### Full Pipeline Processing
+```bash
+python gpth_modular.py run INPUT_DIR OUTPUT_DIR [OPTIONS]
+```
 
-1. **Automatic Detection**: Scans for orphaned processes on startup
-2. **Status Cleanup**: Marks crashed runs as "failed" with error context
-3. **Resume Capability**: Continue from any step where processing stopped
-4. **Graceful Shutdown**: Handles system termination signals properly
+**Required Arguments:**
+- `INPUT_DIR` - Path to Google Takeout directory
+- `OUTPUT_DIR` - Path where organized photos will be saved
 
-## 🤝 Contributing
+**Processing Options:**
+- `--dry-run` - Test without making changes (recommended first)
+- `--verbose` - Detailed output during processing
+- `--quick` - Skip timestamp updates for faster processing
 
-We welcome contributions! The modular architecture makes it easy to:
-- Add new processing steps
-- Enhance existing functionality
-- Improve error handling
-- Add platform-specific optimizations
+**Album Handling:**
+- `--album-mode {shortcut,duplicate-copy,reverse-shortcut,json,nothing}`
+  - `shortcut` - Create shortcuts to photos in albums (default)
+  - `duplicate-copy` - Copy photos into album folders
+  - `reverse-shortcut` - Photos in albums, shortcuts in date folders
+  - `json` - Keep album info in JSON files only
+  - `nothing` - Skip album processing
 
-## 📄 License
+**Date Organization:**
+- `--date-division {0,1,2,3}`
+  - `0` - No date folders (default)
+  - `1` - Organize by year (2023/)
+  - `2` - Organize by year/month (2023/01-January/)
+  - `3` - Organize by year/month/day (2023/01-January/01/)
 
-This project is licensed under the same terms as the original Dart version.
+**File Processing:**
+- `--partner-shared` - Separate partner shared media into its own folder
+- `--skip-extras` - Skip extra images ("-edited" versions, etc.)
+- `--no-write-exif` - Skip writing GPS/dates to EXIF metadata
+- `--transform-pixel-mp` - Convert Pixel Motion Photos (.MP/.MV) to .mp4
+- `--no-guess-from-name` - Don't extract dates from filenames
+- `--update-creation-time` - Update file creation time (Windows only)
+- `--limit-filesize` - Skip files larger than 64MB
 
----
+**Extension Fixing:**
+- `--extension-fix-mode {none,standard,conservative,solo}`
+  - `none` - Don't fix extensions
+  - `standard` - Fix common extension issues (default)
+  - `conservative` - Only fix obvious mismatches
+  - `solo` - Fix extensions without other processing
 
-**🚀 Ready to process your Google Photos takeout? Start with the [Modular Pipeline Guide](MODULAR_PIPELINE_GUIDE.md) for complete instructions!**
+**Performance:**
+- `--max-threads {1-16}` - Number of processing threads (default: 4)
+
+#### Step-by-Step Processing
+```bash
+python gpth_modular.py step STEP_NAME RUN_ID
+```
+
+**Available Steps:**
+- `fix-extensions` - Correct file extensions
+- `discover-media` - Find and catalog all media files
+- `remove-duplicates` - Detect and remove duplicate files
+- `extract-dates` - Extract dates from various sources
+- `write-exif` - Write metadata to files
+- `find-albums` - Discover album information
+- `move-files` - Organize files into final structure
+- `update-timestamps` - Update file timestamps
+
+#### Pipeline Management
+```bash
+# Resume interrupted processing
+python gpth_modular.py continue RUN_ID [--from-step N]
+
+# List all pipeline runs
+python gpth_modular.py list [--detailed]
+
+# Pause running pipeline
+python gpth_modular.py pause RUN_ID
+
+# Cleanup orphaned runs
+python gpth_modular.py clean
+```
+
+## Advanced Configuration
+
+### Processing Examples
+
+**Basic organization with albums:**
+```bash
+python gpth_modular.py run "C:\Takeout" "C:\Photos" --album-mode duplicate-copy
+```
+
+**Year-based organization with EXIF writing:**
+```bash
+python gpth_modular.py run "C:\Takeout" "C:\Photos" --date-division 1 --album-mode shortcut
+```
+
+**Conservative processing (safe mode):**
+```bash
+python gpth_modular.py run "C:\Takeout" "C:\Photos" --dry-run --skip-extras --no-write-exif
+```
+
+**Fast processing (skip timestamps):**
+```bash
+python gpth_modular.py run "C:\Takeout" "C:\Photos" --quick --max-threads 8
+```
+
+**Partner sharing separation:**
+```bash
+python gpth_modular.py run "C:\Takeout" "C:\Photos" --partner-shared --date-division 2
+```
+
+### Album Strategies Explained
+
+1. **Shortcut (Default)** - Photos organized by date, with shortcuts in album folders
+   - Best for most users
+   - Saves disk space
+   - Preserves both date and album organization
+
+2. **Duplicate-Copy** - Photos copied into both date and album folders
+   - Uses more disk space
+   - Easier browsing in album folders
+   - Good for sharing specific albums
+
+3. **Reverse-Shortcut** - Photos in album folders, shortcuts in date folders
+   - Album-centric organization
+   - Date folders contain shortcuts
+   - Good if you primarily browse by album
+
+4. **JSON** - Album info preserved in JSON files only
+   - Minimal organization impact
+   - Preserves album metadata for later processing
+   - Good for custom organization scripts
+
+5. **Nothing** - Skip album processing entirely
+   - Fastest processing
+   - Date-only organization
+   - Good for simple chronological organization
+
+## Troubleshooting
+
+### Common Issues
+
+#### Permission Errors
+**Problem:** "Permission denied" when accessing files
+**Solutions:**
+- Run as administrator (Windows) or with `sudo` (macOS/Linux)
+- Check that input files aren't in use by other programs
+- Ensure output directory is writable
+
+#### Memory Issues
+**Problem:** "Out of memory" errors with large libraries
+**Solutions:**
+- Use `--limit-filesize` to skip very large files
+- Reduce `--max-threads` to 1 or 2
+- Process libraries in smaller batches
+- Ensure sufficient RAM (8GB+ recommended for large libraries)
+
+#### Slow Processing
+**Problem:** Processing takes very long
+**Solutions:**
+- Use `--quick` flag to skip timestamp updates
+- Increase `--max-threads` (but don't exceed CPU cores)
+- Use SSD storage for both input and output
+- Skip EXIF writing with `--no-write-exif` if not needed
+
+#### Missing Photos
+**Problem:** Some photos don't appear in output
+**Solutions:**
+- Check for duplicates (they may have been removed)
+- Look in partner-shared folder if using `--partner-shared`
+- Check if files were skipped due to `--limit-filesize`
+- Review processing logs for errors
+
+#### Album Issues
+**Problem:** Albums not created or incomplete
+**Solutions:**
+- Try different `--album-mode` settings
+- Check that `metadata.json` files exist in input
+- Some albums may be empty or contain only duplicates
+- Use `list --detailed` to see processing status
+
+#### Date Problems
+**Problem:** Photos have wrong dates or sorted incorrectly
+**Solutions:**
+- Enable `--no-guess-from-name` if filename dates are wrong
+- Check EXIF data exists in original files
+- Some photos may not have reliable date information
+- Use `--update-creation-time` on Windows for better sorting
+
+### Error Recovery
+
+If processing is interrupted:
+1. **Resume where you left off:**
+   ```bash
+   python gpth_modular.py continue RUN_ID
+   ```
+
+2. **Resume from specific step:**
+   ```bash
+   python gpth_modular.py continue RUN_ID --from-step 4
+   ```
+
+3. **Start fresh if needed:**
+   - Clean up with `python gpth_modular.py clean`
+   - Delete partial output directory
+   - Start processing again
+
+### Debug Mode
+
+For detailed troubleshooting:
+```bash
+python gpth_interactive.py --log-level DEBUG
+```
+
+Or for modular CLI:
+```bash
+python gpth_modular.py run "input" "output" --verbose
+```
+
+## System Requirements
+
+### Minimum Requirements
+- **OS:** Windows 10, macOS 10.14, or Ubuntu 18.04+
+- **Python:** 3.7 or higher
+- **RAM:** 4GB (8GB+ recommended for large libraries)
+- **Storage:** 2x the size of your Google Takeout (for processing space)
+- **CPU:** Any modern processor (multi-core recommended)
+
+### Recommended Specifications
+- **RAM:** 16GB+ for libraries over 100GB
+- **Storage:** SSD for both input and output locations
+- **CPU:** 4+ cores for faster processing
+- **Free Space:** 3x your Takeout size for safe processing
+
+### Storage Considerations
+- **Input:** Your Google Takeout archive (can be on slower storage)
+- **Output:** Organized photos directory (SSD recommended)
+- **Temp Space:** Python may need additional space for processing
+- **Safety Margin:** Keep 20% free space on your drives
+
+## Deployment
+
+### Standalone Deployment
+
+For non-technical users, you can create a standalone executable:
+
+1. **Install PyInstaller:**
+   ```bash
+   pip install pyinstaller
+   ```
+
+2. **Create executable:**
+   ```bash
+   pyinstaller --onefile --windowed gpth_gui.py
+   ```
+
+3. **Bundle with dependencies:**
+   ```bash
+   pyinstaller --onefile --add-data "requirements.txt;." gpth_gui.py
+   ```
+
+### Docker Deployment
+
+For server environments:
+
+1. **Create Dockerfile:**
+   ```dockerfile
+   FROM python:3.9-slim
+   WORKDIR /app
+   COPY requirements.txt .
+   RUN pip install -r requirements.txt
+   COPY . .
+   CMD ["python", "gpth_interactive.py"]
+   ```
+
+2. **Build and run:**
+   ```bash
+   docker build -t gpth .
+   docker run -v /path/to/takeout:/input -v /path/to/output:/output gpth
+   ```
+
+### Network Storage
+
+For processing files on network drives:
+
+1. **Mount network drive properly**
+2. **Use full paths in commands**
+3. **Consider copying to local storage first for better performance**
+4. **Use `--max-threads 1` to avoid network congestion**
+
+## Quick Start Recommendation
+
+**Most users:** Start with the **Enhanced GUI** (`python gpth_gui.py`)  
+**Command line users:** Use **Interactive CLI** (`python gpth_interactive.py`)  
+**Developers:** Use **Modular CLI** for debugging (`python gpth_modular.py`)
+
+## Tips for Success
+
+1. **Start with dry run:**
+   ```bash
+   python gpth_modular.py run "input" "output" --dry-run
+   ```
+
+2. **Test with small subset first**
+3. **Keep a backup of your original Takeout files**
+4. **Use SSD storage for faster processing**
+5. **Monitor disk space during processing**
+6. **Start with default settings before customizing**
+
+## Getting Help
+
+- Use the built-in help system in the GUI (❓ Help button)
+- Run `--system-check` to verify your setup
+- Check this README for detailed command options
+- Review log files for specific error messages
+- Try dry run mode to preview changes

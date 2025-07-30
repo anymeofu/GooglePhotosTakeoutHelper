@@ -173,3 +173,7 @@ test_organized/
 duplicates_report.json
 processing_report.json
 error_report.json
+
+# ExifTool files (for testing only)
+exiftool.exe
+exiftool_files/
