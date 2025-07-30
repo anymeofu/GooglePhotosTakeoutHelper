@@ -1,4 +1,4 @@
-# 🐍 Google Photos Takeout Helper - Python Edition
+# 🐍 Google Photos Takeout Helper - Python Edition by Dr. Metformin
 
 A **production-ready modular Python implementation** of the Google Photos Takeout Helper with advanced crash recovery, step-by-step execution, comprehensive state management, and **Phase 2 enhanced services**.
 
