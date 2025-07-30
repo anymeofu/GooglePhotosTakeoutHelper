@@ -61,12 +61,53 @@ class InteractiveCLI:
             
         output_dir = input("📦 Enter output folder path: ").strip()
         
+        # Data source selection
+        print("\n📂 Data Source:")
+        source_choice = input("1) Folder\n2) ZIP file\nChoice [1]: ")
+        is_zip = source_choice == '2'
+        if is_zip:
+            print("⚠️  ZIP processing not yet implemented - using folder mode")
+        
         # Ask about options
         print("\n⚙️  Processing Options:")
         dry_run = input("🔍 Dry run (no changes)? [y/N]: ").lower().startswith('y')
         skip_timestamps = input("⚡ Quick mode (skip timestamps)? [y/N]: ").lower().startswith('y')
         
-        album_mode = 'duplicate-copy'
+        # Extension handling
+        print("\n🔧 File Extension Handling:")
+        ext_choice = input("1) Standard fixes\n2) Aggressive fixes\n3) No fixes\nChoice [1]: ")
+        extension_fix_mode = 'standard'
+        if ext_choice == '2':
+            extension_fix_mode = 'aggressive'
+        elif ext_choice == '3':
+            extension_fix_mode = 'none'
+        
+        # Duplicate handling
+        print("\n🗂️  Duplicate File Handling:")
+        dup_choice = input("1) Remove duplicates\n2) Keep all files\nChoice [1]: ")
+        remove_duplicates = dup_choice != '2'
+        
+        # Metadata options
+        print("\n📝 Metadata Options:")
+        write_exif = not input("📊 Skip writing EXIF metadata? [y/N]: ").lower().startswith('y')
+        guess_from_name = not input("🔤 Skip guessing dates from filenames? [y/N]: ").lower().startswith('y')
+        
+        # Advanced options
+        print("\n🔧 Advanced Options:")
+        clean_output = input("🧹 Clean output directory first? [y/N]: ").lower().startswith('y')
+        max_workers_input = input("⚡ Max workers (1-8) [4]: ").strip()
+        max_workers = 4
+        try:
+            if max_workers_input:
+                max_workers = max(1, min(8, int(max_workers_input)))
+        except ValueError:
+            pass
+        
+        # Progress options
+        show_progress = not input("📊 Hide progress bars? [y/N]: ").lower().startswith('y')
+        verbose = input("📢 Verbose output? [y/N]: ").lower().startswith('y')
+        
+        album_mode = 'shortcut'  # Updated default
         choice = input("\n📁 Album organization:\n1) Make copies (recommended)\n2) Shortcuts only\n3) No albums\nChoice [1]: ")
         if choice == '2':
             album_mode = 'shortcut'
@@ -92,9 +133,17 @@ class InteractiveCLI:
             input_path=input_dir,
             output_path=output_dir,
             album_mode=AlbumMode(album_mode),
+            extension_fix_mode=ExtensionFixMode(extension_fix_mode),
             update_creation_time=not skip_timestamps,
+            write_exif=write_exif,
+            guess_from_name=guess_from_name,
+            verbose=verbose,
+            max_threads=max_workers,
             dry_run=dry_run
         )
+        
+        # Store additional settings for future use (when implementing missing features)
+        # remove_duplicates, clean_output, show_progress will be used in Phase 2
         
         self.pipeline = ModularPipeline(config, self.state_dir, self.logger)
         run_id = self.pipeline.start_pipeline(Path(input_dir), Path(output_dir))
@@ -230,12 +279,12 @@ class ModularCLI:
         # Handle negated boolean options
         write_exif = not options.get('no_write_exif', False)
         guess_from_name = not options.get('no_guess_from_name', False)
-        update_creation_time = options.get('update_creation_time', False) or not options.get('quick', False)
+        update_creation_time = options.get('update_creation_time', not options.get('quick', False))
         
         config = ProcessingConfig(
             input_path=input_dir,
             output_path=output_dir,
-            album_mode=AlbumMode(options.get('album_mode', 'duplicate-copy')),
+            album_mode=AlbumMode(options.get('album_mode', 'shortcut')),
             extension_fix_mode=ExtensionFixMode(options.get('extension_fix_mode', 'standard')),
             dry_run=options.get('dry_run', False),
             verbose=options.get('verbose', False),
